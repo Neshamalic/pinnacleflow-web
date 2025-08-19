@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
+import Icon from '../../../components/AppIcon.jsx';
+import Button from '../../../components/ui/Button.jsx';
+import { fmtDate, fmtCurrency } from '../../../utils/format.js';
 
 const TenderDetailModal = ({ tender, isOpen, onClose, onEdit }) => {
   const [currentLanguage, setCurrentLanguage] = useState('en');
@@ -14,84 +15,28 @@ const TenderDetailModal = ({ tender, isOpen, onClose, onEdit }) => {
   if (!isOpen || !tender) return null;
 
   const tabs = [
-    {
-      id: 'overview',
-      label: currentLanguage === 'es' ? 'Resumen' : 'Overview',
-      icon: 'FileText'
-    },
-    {
-      id: 'products',
-      label: currentLanguage === 'es' ? 'Productos' : 'Products',
-      icon: 'Package'
-    },
-    {
-      id: 'delivery',
-      label: currentLanguage === 'es' ? 'Entrega' : 'Delivery',
-      icon: 'Truck'
-    },
-    {
-      id: 'communications',
-      label: currentLanguage === 'es' ? 'Comunicaciones' : 'Communications',
-      icon: 'MessageSquare'
-    },
-    {
-      id: 'recommendations',
-      label: currentLanguage === 'es' ? 'Recomendaciones' : 'Recommendations',
-      icon: 'Lightbulb'
-    }
+    { id: 'overview',        label: currentLanguage === 'es' ? 'Resumen' : 'Overview',        icon: 'FileText' },
+    { id: 'products',        label: currentLanguage === 'es' ? 'Productos' : 'Products',      icon: 'Package' },
+    { id: 'delivery',        label: currentLanguage === 'es' ? 'Entrega' : 'Delivery',        icon: 'Truck' },
+    { id: 'communications',  label: currentLanguage === 'es' ? 'Comunicaciones' : 'Communications', icon: 'MessageSquare' },
+    { id: 'recommendations', label: currentLanguage === 'es' ? 'Recomendaciones' : 'Recommendations', icon: 'Lightbulb' },
   ];
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      draft: {
-        color: 'bg-gray-100 text-gray-800',
-        label: currentLanguage === 'es' ? 'Borrador' : 'Draft'
-      },
-      submitted: {
-        color: 'bg-blue-100 text-blue-800',
-        label: currentLanguage === 'es' ? 'Enviado' : 'Submitted'
-      },
-      awarded: {
-        color: 'bg-green-100 text-green-800',
-        label: currentLanguage === 'es' ? 'Adjudicado' : 'Awarded'
-      },
-      rejected: {
-        color: 'bg-red-100 text-red-800',
-        label: currentLanguage === 'es' ? 'Rechazado' : 'Rejected'
-      },
-      in_delivery: {
-        color: 'bg-yellow-100 text-yellow-800',
-        label: currentLanguage === 'es' ? 'En Entrega' : 'In Delivery'
-      },
-      completed: {
-        color: 'bg-emerald-100 text-emerald-800',
-        label: currentLanguage === 'es' ? 'Completado' : 'Completed'
-      }
+      draft:       { color: 'bg-gray-100 text-gray-800',     label: currentLanguage === 'es' ? 'Borrador'    : 'Draft' },
+      submitted:   { color: 'bg-blue-100 text-blue-800',      label: currentLanguage === 'es' ? 'Enviado'    : 'Submitted' },
+      awarded:     { color: 'bg-green-100 text-green-800',    label: currentLanguage === 'es' ? 'Adjudicado' : 'Awarded' },
+      rejected:    { color: 'bg-red-100 text-red-800',        label: currentLanguage === 'es' ? 'Rechazado'  : 'Rejected' },
+      in_delivery: { color: 'bg-yellow-100 text-yellow-800',  label: currentLanguage === 'es' ? 'En Entrega' : 'In Delivery' },
+      completed:   { color: 'bg-emerald-100 text-emerald-800',label: currentLanguage === 'es' ? 'Completado' : 'Completed' },
     };
-
-    const config = statusConfig?.[status] || statusConfig?.draft;
+    const config = statusConfig[status] || statusConfig.draft;
     return (
-      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${config?.color}`}>
-        {config?.label}
+      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${config.color}`}>
+        {config.label}
       </span>
     );
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date?.toLocaleDateString(currentLanguage === 'es' ? 'es-CL' : 'en-US', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
-
-  const formatCurrency = (amount, currency = 'CLP') => {
-    return new Intl.NumberFormat(currentLanguage === 'es' ? 'es-CL' : 'en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 0
-    })?.format(amount);
   };
 
   const renderOverviewTab = () => (
@@ -114,7 +59,7 @@ const TenderDetailModal = ({ tender, isOpen, onClose, onEdit }) => {
             <label className="text-sm font-medium text-muted-foreground">
               {currentLanguage === 'es' ? 'Fecha de Creación' : 'Created Date'}
             </label>
-            <p className="text-foreground">{formatDate(tender?.createdDate)}</p>
+            <p className="text-foreground">{fmtDate(tender?.createdDate, currentLanguage)}</p>
           </div>
         </div>
         <div className="space-y-4">
@@ -122,23 +67,27 @@ const TenderDetailModal = ({ tender, isOpen, onClose, onEdit }) => {
             <label className="text-sm font-medium text-muted-foreground">
               {currentLanguage === 'es' ? 'Valor Total' : 'Total Value'}
             </label>
-            <p className="text-lg font-semibold text-foreground">{formatCurrency(tender?.totalValue)}</p>
+            <p className="text-lg font-semibold text-foreground">
+              {fmtCurrency(tender?.totalValue, currentLanguage, tender?.currency || 'CLP', 0)}
+            </p>
           </div>
           <div>
             <label className="text-sm font-medium text-muted-foreground">
               {currentLanguage === 'es' ? 'Cobertura de Stock' : 'Stock Coverage'}
             </label>
-            <p className="text-foreground">{tender?.stockCoverage} {currentLanguage === 'es' ? 'días' : 'days'}</p>
+            <p className="text-foreground">
+              {tender?.stockCoverage} {currentLanguage === 'es' ? 'días' : 'days'}
+            </p>
           </div>
           <div>
             <label className="text-sm font-medium text-muted-foreground">
               {currentLanguage === 'es' ? 'Fecha de Entrega' : 'Delivery Date'}
             </label>
-            <p className="text-foreground">{formatDate(tender?.deliveryDate)}</p>
+            <p className="text-foreground">{fmtDate(tender?.deliveryDate, currentLanguage)}</p>
           </div>
         </div>
       </div>
-      
+
       <div>
         <label className="text-sm font-medium text-muted-foreground">
           {currentLanguage === 'es' ? 'Descripción' : 'Description'}
@@ -155,10 +104,10 @@ const TenderDetailModal = ({ tender, isOpen, onClose, onEdit }) => {
           {currentLanguage === 'es' ? 'Productos en la Licitación' : 'Products in Tender'}
         </h4>
         <span className="text-sm text-muted-foreground">
-          {tender?.products?.length || 0} {currentLanguage === 'es' ? 'productos' : 'products'}
+          {(tender?.products?.length || 0)} {currentLanguage === 'es' ? 'productos' : 'products'}
         </span>
       </div>
-      
+
       <div className="space-y-3">
         {tender?.products?.map((product, index) => (
           <div key={index} className="border border-border rounded-lg p-4">
@@ -171,12 +120,15 @@ const TenderDetailModal = ({ tender, isOpen, onClose, onEdit }) => {
                     {currentLanguage === 'es' ? 'Cantidad:' : 'Quantity:'} {product?.quantity}
                   </span>
                   <span className="text-muted-foreground">
-                    {currentLanguage === 'es' ? 'Unidades por empaque:' : 'Units per package:'} {product?.packagingUnits} {currentLanguage === 'es' ? 'unidades' : 'units'}
+                    {currentLanguage === 'es' ? 'Unidades por empaque:' : 'Units per package:'}{' '}
+                    {product?.packagingUnits} {currentLanguage === 'es' ? 'unidades' : 'units'}
                   </span>
                 </div>
               </div>
               <div className="text-right">
-                <p className="font-medium text-foreground">{formatCurrency(product?.unitPrice)}</p>
+                <p className="font-medium text-foreground">
+                  {fmtCurrency(product?.unitPrice, currentLanguage, tender?.currency || 'CLP', 0)}
+                </p>
                 <p className="text-sm text-muted-foreground">
                   {currentLanguage === 'es' ? 'por unidad' : 'per unit'}
                 </p>
@@ -200,14 +152,21 @@ const TenderDetailModal = ({ tender, isOpen, onClose, onEdit }) => {
               <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                 <div>
                   <p className="font-medium text-foreground">{schedule?.phase}</p>
-                  <p className="text-sm text-muted-foreground">{schedule?.quantity} {currentLanguage === 'es' ? 'unidades' : 'units'}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {schedule?.quantity} {currentLanguage === 'es' ? 'unidades' : 'units'}
+                  </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-foreground">{formatDate(schedule?.date)}</p>
-                  <span className={`text-xs px-2 py-1 rounded ${
-                    schedule?.status === 'completed' ? 'bg-green-100 text-green-800' :
-                    schedule?.status === 'pending'? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
+                  <p className="text-foreground">{fmtDate(schedule?.date, currentLanguage)}</p>
+                  <span
+                    className={`text-xs px-2 py-1 rounded ${
+                      schedule?.status === 'completed'
+                        ? 'bg-green-100 text-green-800'
+                        : schedule?.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
                     {schedule?.status}
                   </span>
                 </div>
@@ -215,7 +174,7 @@ const TenderDetailModal = ({ tender, isOpen, onClose, onEdit }) => {
             ))}
           </div>
         </div>
-        
+
         <div>
           <h4 className="text-lg font-semibold text-foreground mb-4">
             {currentLanguage === 'es' ? 'Información de Envío' : 'Shipping Information'}
@@ -249,7 +208,7 @@ const TenderDetailModal = ({ tender, isOpen, onClose, onEdit }) => {
           {currentLanguage === 'es' ? 'Agregar' : 'Add'}
         </Button>
       </div>
-      
+
       <div className="space-y-3">
         {tender?.communications?.map((comm, index) => (
           <div key={index} className="border border-border rounded-lg p-4">
@@ -263,7 +222,7 @@ const TenderDetailModal = ({ tender, isOpen, onClose, onEdit }) => {
                   <p className="text-sm text-muted-foreground">{comm?.content}</p>
                   <div className="flex items-center space-x-4 mt-2 text-xs text-muted-foreground">
                     <span>{comm?.type}</span>
-                    <span>{formatDate(comm?.date)}</span>
+                    <span>{fmtDate(comm?.date, currentLanguage)}</span>
                     <span>{comm?.sender}</span>
                   </div>
                 </div>
@@ -283,30 +242,50 @@ const TenderDetailModal = ({ tender, isOpen, onClose, onEdit }) => {
       <h4 className="text-lg font-semibold text-foreground">
         {currentLanguage === 'es' ? 'Recomendaciones del Sistema' : 'System Recommendations'}
       </h4>
-      
+
       <div className="space-y-3">
         {tender?.recommendations?.map((rec, index) => (
-          <div key={index} className={`border rounded-lg p-4 ${
-            rec?.priority === 'high' ? 'border-red-200 bg-red-50' :
-            rec?.priority === 'medium'? 'border-yellow-200 bg-yellow-50' : 'border-blue-200 bg-blue-50'
-          }`}>
+          <div
+            key={index}
+            className={`border rounded-lg p-4 ${
+              rec?.priority === 'high'
+                ? 'border-red-200 bg-red-50'
+                : rec?.priority === 'medium'
+                ? 'border-yellow-200 bg-yellow-50'
+                : 'border-blue-200 bg-blue-50'
+            }`}
+          >
             <div className="flex items-start space-x-3">
-              <Icon 
-                name={rec?.priority === 'high' ? 'AlertTriangle' : rec?.priority === 'medium' ? 'AlertCircle' : 'Info'} 
-                size={20} 
+              <Icon
+                name={
+                  rec?.priority === 'high'
+                    ? 'AlertTriangle'
+                    : rec?.priority === 'medium'
+                    ? 'AlertCircle'
+                    : 'Info'
+                }
+                size={20}
                 className={
-                  rec?.priority === 'high' ? 'text-red-600' :
-                  rec?.priority === 'medium'? 'text-yellow-600' : 'text-blue-600'
+                  rec?.priority === 'high'
+                    ? 'text-red-600'
+                    : rec?.priority === 'medium'
+                    ? 'text-yellow-600'
+                    : 'text-blue-600'
                 }
               />
               <div className="flex-1">
                 <p className="font-medium text-foreground">{rec?.title}</p>
                 <p className="text-sm text-muted-foreground mt-1">{rec?.description}</p>
                 <div className="flex items-center justify-between mt-3">
-                  <span className={`text-xs px-2 py-1 rounded ${
-                    rec?.priority === 'high' ? 'bg-red-100 text-red-800' :
-                    rec?.priority === 'medium'? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
-                  }`}>
+                  <span
+                    className={`text-xs px-2 py-1 rounded ${
+                      rec?.priority === 'high'
+                        ? 'bg-red-100 text-red-800'
+                        : rec?.priority === 'medium'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-blue-100 text-blue-800'
+                    }`}
+                  >
                     {rec?.priority} {currentLanguage === 'es' ? 'prioridad' : 'priority'}
                   </span>
                   <Button variant="outline" size="sm">
@@ -341,8 +320,10 @@ const TenderDetailModal = ({ tender, isOpen, onClose, onEdit }) => {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 transition-opacity bg-background/80 backdrop-blur-sm" onClick={onClose} />
-        
+        <div
+          className="fixed inset-0 transition-opacity bg-background/80 backdrop-blur-sm"
+          onClick={onClose}
+        />
         <div className="inline-block w-full max-w-6xl my-8 overflow-hidden text-left align-middle transition-all transform bg-card shadow-xl rounded-lg border border-border">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-border">
@@ -363,26 +344,25 @@ const TenderDetailModal = ({ tender, isOpen, onClose, onEdit }) => {
           {/* Tabs */}
           <div className="border-b border-border">
             <nav className="flex space-x-8 px-6">
-              {tabs?.map((tab) => (
+              {tabs.map((tab) => (
                 <button
-                  key={tab?.id}
-                  onClick={() => setActiveTab(tab?.id)}
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === tab?.id
-                      ? 'border-primary text-primary' :'border-transparent text-muted-foreground hover:text-foreground hover:border-muted'
+                    activeTab === tab.id
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted'
                   }`}
                 >
-                  <Icon name={tab?.icon} size={16} />
-                  <span>{tab?.label}</span>
+                  <Icon name={tab.icon} size={16} />
+                  <span>{tab.label}</span>
                 </button>
               ))}
             </nav>
           </div>
 
           {/* Content */}
-          <div className="p-6 max-h-96 overflow-y-auto">
-            {renderTabContent()}
-          </div>
+          <div className="p-6 max-h-96 overflow-y-auto">{renderTabContent()}</div>
         </div>
       </div>
     </div>

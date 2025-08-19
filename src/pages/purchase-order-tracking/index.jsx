@@ -1,33 +1,37 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Header from '../../components/ui/Header';
 import Breadcrumb from '../../components/ui/Breadcrumb';
-import OrderSummaryCards from './components/OrderSummaryCards';
-import OrderFilters from './components/OrderFilters';
-import OrdersTable from './components/OrdersTable';
 import Button from '../../components/ui/Button';
 import Icon from '../../components/AppIcon';
 
-// ⬇️ NUEVO: lector de Google Sheets
+// Google Sheets
 import { fetchGoogleSheet } from '../../lib/googleSheet';
 import { SHEET_ID } from '../../lib/sheetsConfig';
 
-const PurchaseOrderTracking = () => {
+// Componentes de esta página
+import ImportTable from './components/ImportTable';
+import ImportItemsModal from './components/ImportItemsModal';
+
+const ImportManagement = () => {
   const [currentLanguage, setCurrentLanguage] = useState('en');
 
-  // filtros existentes (se mantienen)
+  // Filtros básicos (ajusta según tus necesidades/componentes)
   const [filters, setFilters] = useState({
     search: '',
-    manufacturingStatus: '',
-    qcStatus: '',
-    transportType: '',
-    dateRange: '',
-    productCategory: ''
+    status: '',
+    broker: '',
+    warehouse: '',
+    dateRange: ''
   });
 
-  // ⬇️ NUEVO: estado para órdenes reales desde Google Sheets
-  const [orders, setOrders] = useState([]);
+  // Datos reales
+  const [importsData, setImportsData] = useState([]); // agrupados por oci_number
   const [lastUpdated, setLastUpdated] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Modal de ítems
+  const [openItems, setOpenItems] = useState(false);
+  const [selectedImport, setSelectedImport] = useState(null);
 
   useEffect(() => {
     const savedLanguage = localStorage.getItem('language') || 'en';
@@ -37,59 +41,63 @@ const PurchaseOrderTracking = () => {
       const newLanguage = localStorage.getItem('language') || 'en';
       setCurrentLanguage(newLanguage);
     };
-
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // ⬇️ NUEVO: carga purchase_orders + purchase_order_items
+  // Carga de hojas: imports + import_items
   useEffect(() => {
     async function load() {
       try {
         setLoading(true);
 
-        const [po, poi] = await Promise.all([
-          fetchGoogleSheet({ sheetId: SHEET_ID, sheetName: 'purchase_orders' }),
-          fetchGoogleSheet({ sheetId: SHEET_ID, sheetName: 'purchase_order_items' })
+        const [imports, importItems] = await Promise.all([
+          fetchGoogleSheet({ sheetId: SHEET_ID, sheetName: 'imports' }),
+          fetchGoogleSheet({ sheetId: SHEET_ID, sheetName: 'import_items' })
         ]);
 
-        // indexar ítems por po_number
-        const itemsByPO = poi.reduce((acc, it) => {
-          const key = it?.po_number;
+        // Indexar ítems por oci_number
+        const itemsByOCI = importItems.reduce((acc, it) => {
+          const key = it?.oci_number;
           if (!key) return acc;
           (acc[key] = acc[key] || []).push(it);
           return acc;
         }, {});
 
-        // construir lista para la UI
-        const list = po.map((o, idx) => {
-          const its = itemsByPO[o?.po_number] || [];
-          const totalQty = its.reduce((s, it) => s + (Number(it?.qty_ordered) || 0), 0);
-          const totalValue = its.reduce(
-            (s, it) => s + (Number(it?.qty_ordered) || 0) * (Number(it?.unit_price) || 0),
-            0
-          );
+        // Construir lista para la UI (una fila por import)
+        const list = (imports || []).map((imp, idx) => {
+          const items = itemsByOCI[imp?.oci_number] || [];
+          const totalReceived = items.reduce((s, it) => s + (Number(it?.qty_received) || 0), 0);
+          const qaRequired =
+            items.some(
+              (it) =>
+                String(it?.qa_required).toLowerCase() === 'true' ||
+                it?.qa_required === 1
+            ) || false;
 
           return {
             id: idx + 1,
-            poNumber: o?.po_number || '',
-            supplier: o?.supplier_name || '',
-            tenderNumber: o?.tender_number || '',
-            orderDate: o?.order_date || '',
-            incoterm: o?.incoterm || '',
-            currency: o?.currency || 'CLP',
-            status: o?.status || 'open',
-            items: its,           // [{ presentation_code, qty_ordered, unit_price, notes }, ...]
-            totalQty,
-            totalValue
+            ociNumber: imp?.oci_number || '',
+            poNumber: imp?.po_number || '',
+            blAwb: imp?.bl_awb || '',
+            vessel: imp?.vessel || '',
+            eta: imp?.eta || '',
+            atd: imp?.atd || '',
+            ata: imp?.ata || '',
+            customsBroker: imp?.customs_broker || '',
+            warehouse: imp?.warehouse || '',
+            status: imp?.status || 'open',
+            items,
+            totalReceived,
+            qaRequired
           };
         });
 
-        setOrders(list);
+        setImportsData(list);
         setLastUpdated(new Date());
       } catch (e) {
-        console.error('Error loading purchase orders:', e);
-        setOrders([]);
+        console.error('Error loading imports:', e);
+        setImportsData([]);
       } finally {
         setLoading(false);
       }
@@ -97,45 +105,35 @@ const PurchaseOrderTracking = () => {
     load();
   }, []);
 
-  const handleFiltersChange = (newFilters) => {
-    setFilters(newFilters);
+  const handleExport = () => {
+    console.log('Export imports…', importsData.length);
   };
 
-  const handleExportData = () => {
-    // Aquí puedes exportar "orders" (CSV/JSON) si lo deseas
-    console.log('Exporting order data...', orders.length, 'orders');
+  const handleNewImport = () => {
+    console.log('Create new import…');
   };
 
-  const handleCreateOrder = () => {
-    console.log('Creating new order...');
-  };
+  const handleFiltersChange = (newFilters) => setFilters(newFilters);
 
-  // ⬇️ NUEVO: filtrado básico de órdenes (según los campos disponibles)
-  const filteredOrders = orders.filter((o) => {
-    // búsqueda libre: poNumber, supplier, tenderNumber
+  // Filtrado básico
+  const norm = (s) => (s ? String(s).toLowerCase() : '');
+  const filteredImports = importsData.filter((imp) => {
     if (filters?.search) {
-      const q = String(filters.search).toLowerCase();
+      const q = norm(filters.search);
       const hit =
-        o.poNumber?.toLowerCase().includes(q) ||
-        o.supplier?.toLowerCase().includes(q) ||
-        o.tenderNumber?.toLowerCase().includes(q);
+        norm(imp.ociNumber).includes(q) ||
+        norm(imp.poNumber).includes(q) ||
+        norm(imp.vessel).includes(q) ||
+        norm(imp.blAwb).includes(q);
       if (!hit) return false;
     }
-
-    // productCategory: no existe como tal; probamos contra "notes" de los items
-    if (filters?.productCategory) {
-      const q = String(filters.productCategory).toLowerCase();
-      const hit = (o.items || []).some((it) => String(it?.notes || '').toLowerCase().includes(q));
-      if (!hit) return false;
-    }
-
-    // manufacturingStatus / qcStatus / transportType / dateRange:
-    // estos campos no están en las hojas base; si los agregas más adelante,
-    // puedes mapearlos aquí. Por ahora se ignoran de forma segura.
+    if (filters?.status && norm(imp.status) !== norm(filters.status)) return false;
+    if (filters?.broker && norm(imp.customsBroker) !== norm(filters.broker)) return false;
+    if (filters?.warehouse && norm(imp.warehouse) !== norm(filters.warehouse)) return false;
+    // dateRange: implementar si usas un picker con from/to
     return true;
   });
 
-  // Texto "última actualización"
   const lastUpdatedLabel = lastUpdated
     ? new Intl.DateTimeFormat(currentLanguage === 'es' ? 'es-CL' : 'en-US', {
         hour: '2-digit',
@@ -149,26 +147,24 @@ const PurchaseOrderTracking = () => {
 
       <main className="pt-16">
         <div className="max-w-7xl mx-auto px-6 py-8">
-          {/* Page Header */}
+          {/* Encabezado */}
           <div className="mb-8">
             <Breadcrumb />
             <div className="flex items-center justify-between mt-4">
               <div>
                 <h1 className="text-3xl font-bold text-foreground">
-                  {currentLanguage === 'es'
-                    ? 'Seguimiento de Órdenes de Compra'
-                    : 'Purchase Order Tracking'}
+                  {currentLanguage === 'es' ? 'Gestión de Importaciones' : 'Import Management'}
                 </h1>
                 <p className="text-muted-foreground mt-2">
                   {currentLanguage === 'es'
-                    ? 'Monitorea el estado de producción y envío de órdenes a India'
-                    : 'Monitor production status and shipment coordination for orders to India'}
+                    ? 'Coordina BL/AWB, ETA/ATD/ATA y QA con tu agente y bodega.'
+                    : 'Coordinate BL/AWB, ETA/ATD/ATA and QA with broker and warehouse.'}
                 </p>
               </div>
               <div className="flex items-center space-x-3">
                 <Button
                   variant="outline"
-                  onClick={handleExportData}
+                  onClick={handleExport}
                   iconName="Download"
                   iconPosition="left"
                 >
@@ -176,30 +172,25 @@ const PurchaseOrderTracking = () => {
                 </Button>
                 <Button
                   variant="default"
-                  onClick={handleCreateOrder}
+                  onClick={handleNewImport}
                   iconName="Plus"
                   iconPosition="left"
                 >
-                  {currentLanguage === 'es' ? 'Nueva Orden' : 'New Order'}
+                  {currentLanguage === 'es' ? 'Nueva Importación' : 'New Import'}
                 </Button>
               </div>
             </div>
           </div>
 
-          {/* Summary Cards (si más adelante quieres usar datos reales, podemos pasar props) */}
-          <OrderSummaryCards currentLanguage={currentLanguage} />
+          {/* (Opcional) Aquí podrías colocar SummaryCards/Filters específicos de importaciones */}
+          {/* <ImportSummaryCards currentLanguage={currentLanguage} imports={filteredImports} />
+          <ImportFilters currentLanguage={currentLanguage} onFiltersChange={handleFiltersChange} /> */}
 
-          {/* Filters */}
-          <OrderFilters
-            currentLanguage={currentLanguage}
-            onFiltersChange={handleFiltersChange}
-          />
-
-          {/* Orders Table */}
+          {/* Tabla */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-foreground">
-                {currentLanguage === 'es' ? 'Órdenes de Compra' : 'Purchase Orders'}
+                {currentLanguage === 'es' ? 'Importaciones' : 'Imports'}
               </h2>
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                 <Icon name="Clock" size={16} />
@@ -211,90 +202,28 @@ const PurchaseOrderTracking = () => {
               </div>
             </div>
 
-            {/* ⬇️ Pasamos los datos reales filtrados a la tabla */}
-            <OrdersTable
+            <ImportTable
               currentLanguage={currentLanguage}
-              filters={filters}
+              importsData={filteredImports}
               loading={loading}
-              orders={filteredOrders}
+              onRowClick={(imp) => {
+                setSelectedImport(imp);
+                setOpenItems(true);
+              }}
             />
-          </div>
-
-          {/* Quick Actions */}
-          <div className="bg-card rounded-lg border border-border p-6 shadow-soft">
-            <h3 className="text-lg font-semibold text-foreground mb-4">
-              {currentLanguage === 'es' ? 'Acciones Rápidas' : 'Quick Actions'}
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Button
-                variant="outline"
-                className="justify-start h-auto p-4"
-                iconName="FileText"
-                iconPosition="left"
-              >
-                <div className="text-left">
-                  <div className="font-medium">
-                    {currentLanguage === 'es' ? 'Generar Reporte' : 'Generate Report'}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {currentLanguage === 'es' ? 'Estado de órdenes' : 'Order status report'}
-                  </div>
-                </div>
-              </Button>
-
-              <Button
-                variant="outline"
-                className="justify-start h-auto p-4"
-                iconName="Bell"
-                iconPosition="left"
-              >
-                <div className="text-left">
-                  <div className="font-medium">
-                    {currentLanguage === 'es' ? 'Configurar Alertas' : 'Setup Alerts'}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {currentLanguage === 'es' ? 'Notificaciones ETA' : 'ETA notifications'}
-                  </div>
-                </div>
-              </Button>
-
-              <Button
-                variant="outline"
-                className="justify-start h-auto p-4"
-                iconName="MessageSquare"
-                iconPosition="left"
-              >
-                <div className="text-left">
-                  <div className="font-medium">
-                    {currentLanguage === 'es' ? 'Comunicaciones' : 'Communications'}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {currentLanguage === 'es' ? 'Con proveedores India' : 'With India suppliers'}
-                  </div>
-                </div>
-              </Button>
-
-              <Button
-                variant="outline"
-                className="justify-start h-auto p-4"
-                iconName="Settings"
-                iconPosition="left"
-              >
-                <div className="text-left">
-                  <div className="font-medium">
-                    {currentLanguage === 'es' ? 'Configuración' : 'Settings'}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {currentLanguage === 'es' ? 'Preferencias sistema' : 'System preferences'}
-                  </div>
-                </div>
-              </Button>
-            </div>
           </div>
         </div>
       </main>
+
+      {/* Modal de ítems */}
+      <ImportItemsModal
+        open={openItems}
+        onClose={() => setOpenItems(false)}
+        imp={selectedImport}
+        currentLanguage={currentLanguage}
+      />
     </div>
   );
 };
 
-export default PurchaseOrderTracking;
+export default ImportManagement;

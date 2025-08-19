@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
-import { Checkbox } from '../../../components/ui/Checkbox';
+import Icon from '../../../components/AppIcon.jsx';
+import Button from '../../../components/ui/Button.jsx';
+import { Checkbox } from '../../../components/ui/Checkbox.jsx';
+import { fmtDate, fmtCurrency } from '../../../utils/format.js';
 
-const TenderCardView = ({ 
-  tenders, 
-  selectedTenders, 
-  onTenderSelect, 
-  onTenderView, 
-  onTenderEdit 
+const TenderCardView = ({
+  tenders,
+  selectedTenders,
+  onTenderSelect,
+  onTenderView,
+  onTenderEdit,
 }) => {
   const [currentLanguage, setCurrentLanguage] = useState('en');
 
@@ -22,40 +23,42 @@ const TenderCardView = ({
       draft: {
         color: 'bg-gray-100 text-gray-800',
         label: currentLanguage === 'es' ? 'Borrador' : 'Draft',
-        icon: 'FileText'
+        icon: 'FileText',
       },
       submitted: {
         color: 'bg-blue-100 text-blue-800',
         label: currentLanguage === 'es' ? 'Enviado' : 'Submitted',
-        icon: 'Send'
+        icon: 'Send',
       },
       awarded: {
         color: 'bg-green-100 text-green-800',
         label: currentLanguage === 'es' ? 'Adjudicado' : 'Awarded',
-        icon: 'Award'
+        icon: 'Award',
       },
       rejected: {
         color: 'bg-red-100 text-red-800',
         label: currentLanguage === 'es' ? 'Rechazado' : 'Rejected',
-        icon: 'X'
+        icon: 'X',
       },
       in_delivery: {
         color: 'bg-yellow-100 text-yellow-800',
         label: currentLanguage === 'es' ? 'En Entrega' : 'In Delivery',
-        icon: 'Truck'
+        icon: 'Truck',
       },
       completed: {
         color: 'bg-emerald-100 text-emerald-800',
         label: currentLanguage === 'es' ? 'Completado' : 'Completed',
-        icon: 'CheckCircle'
-      }
+        icon: 'CheckCircle',
+      },
     };
 
-    const config = statusConfig?.[status] || statusConfig?.draft;
+    const config = statusConfig?.[status] || statusConfig.draft;
     return (
-      <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${config?.color}`}>
-        <Icon name={config?.icon} size={12} className="mr-1" />
-        {config?.label}
+      <div
+        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}
+      >
+        <Icon name={config.icon} size={12} className="mr-1" />
+        {config.label}
       </div>
     );
   };
@@ -66,30 +69,15 @@ const TenderCardView = ({
     return 'text-green-600';
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date?.toLocaleDateString(currentLanguage === 'es' ? 'es-CL' : 'en-US', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
-
-  const formatCurrency = (amount, currency = 'CLP') => {
-    return new Intl.NumberFormat(currentLanguage === 'es' ? 'es-CL' : 'en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 0
-    })?.format(amount);
-  };
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {tenders?.map((tender) => (
         <div
           key={tender?.id}
           className={`bg-card border rounded-lg p-6 hover:shadow-md transition-all duration-200 cursor-pointer ${
-            selectedTenders?.includes(tender?.id) ? 'border-primary ring-2 ring-primary/20' : 'border-border'
+            selectedTenders?.includes(tender?.id)
+              ? 'border-primary ring-2 ring-primary/20'
+              : 'border-border'
           }`}
           onClick={() => onTenderView(tender?.id)}
         >
@@ -99,8 +87,9 @@ const TenderCardView = ({
               <div className="flex items-center space-x-2 mb-2">
                 <Checkbox
                   checked={selectedTenders?.includes(tender?.id)}
+                  onCheckedChange={() => onTenderSelect(tender?.id)}
                   onChange={() => onTenderSelect(tender?.id)}
-                  onClick={(e) => e?.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
                 />
                 <h3 className="text-sm font-medium text-primary">
                   {tender?.tenderId}
@@ -129,7 +118,12 @@ const TenderCardView = ({
                 {currentLanguage === 'es' ? 'Valor Total' : 'Total Value'}
               </div>
               <div className="text-sm font-medium text-foreground">
-                {formatCurrency(tender?.totalValue)}
+                {fmtCurrency(
+                  tender?.totalValue,
+                  currentLanguage,
+                  tender?.currency || 'CLP',
+                  0
+                )}
               </div>
             </div>
           </div>
@@ -142,24 +136,35 @@ const TenderCardView = ({
               </span>
               <div className="flex items-center text-sm text-foreground">
                 <Icon name="Calendar" size={14} className="mr-1" />
-                {formatDate(tender?.deliveryDate)}
+                {fmtDate(tender?.deliveryDate, currentLanguage)}
                 {tender?.isOverdue && (
                   <Icon name="AlertTriangle" size={14} className="ml-1 text-red-600" />
                 )}
               </div>
             </div>
-            
+
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">
                 {currentLanguage === 'es' ? 'Cobertura Stock' : 'Stock Coverage'}
               </span>
-              <div className={`flex items-center text-sm font-medium ${getStockCoverageColor(tender?.stockCoverage)}`}>
-                <Icon 
-                  name={tender?.stockCoverage < 15 ? "AlertTriangle" : tender?.stockCoverage < 30 ? "AlertCircle" : "CheckCircle"} 
-                  size={14} 
-                  className="mr-1" 
+              <div
+                className={`flex items-center text-sm font-medium ${getStockCoverageColor(
+                  tender?.stockCoverage
+                )}`}
+              >
+                <Icon
+                  name={
+                    tender?.stockCoverage < 15
+                      ? 'AlertTriangle'
+                      : tender?.stockCoverage < 30
+                      ? 'AlertCircle'
+                      : 'CheckCircle'
+                  }
+                  size={14}
+                  className="mr-1"
                 />
-                {tender?.stockCoverage} {currentLanguage === 'es' ? 'días' : 'days'}
+                {tender?.stockCoverage}{' '}
+                {currentLanguage === 'es' ? 'días' : 'days'}
               </div>
             </div>
           </div>
@@ -200,30 +205,20 @@ const TenderCardView = ({
           {/* Actions */}
           <div className="flex items-center justify-between pt-4 border-t border-border">
             <div className="text-xs text-muted-foreground">
-              {currentLanguage === 'es' ? 'Creado' : 'Created'}: {formatDate(tender?.createdDate)}
+              {currentLanguage === 'es' ? 'Creado' : 'Created'}:{' '}
+              {fmtDate(tender?.createdDate, currentLanguage)}
             </div>
-            <div className="flex items-center space-x-1" onClick={(e) => e?.stopPropagation()}>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onTenderView(tender?.id)}
-                className="h-8 w-8"
-              >
+            <div
+              className="flex items-center space-x-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Button variant="ghost" size="icon" onClick={() => onTenderView(tender?.id)} className="h-8 w-8">
                 <Icon name="Eye" size={14} />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onTenderEdit(tender?.id)}
-                className="h-8 w-8"
-              >
+              <Button variant="ghost" size="icon" onClick={() => onTenderEdit(tender?.id)} className="h-8 w-8">
                 <Icon name="Edit" size={14} />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-              >
+              <Button variant="ghost" size="icon" className="h-8 w-8">
                 <Icon name="MoreHorizontal" size={14} />
               </Button>
             </div>
@@ -234,11 +229,14 @@ const TenderCardView = ({
         <div className="col-span-full text-center py-12">
           <Icon name="FileText" size={48} className="mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium text-foreground mb-2">
-            {currentLanguage === 'es' ? 'No se encontraron licitaciones' : 'No tenders found'}
+            {currentLanguage === 'es'
+              ? 'No se encontraron licitaciones'
+              : 'No tenders found'}
           </h3>
           <p className="text-muted-foreground">
-            {currentLanguage === 'es' ?'Intenta ajustar los filtros o crear una nueva licitación.' :'Try adjusting your filters or create a new tender.'
-            }
+            {currentLanguage === 'es'
+              ? 'Intenta ajustar los filtros o crear una nueva licitación.'
+              : 'Try adjusting your filters or create a new tender.'}
           </p>
         </div>
       )}

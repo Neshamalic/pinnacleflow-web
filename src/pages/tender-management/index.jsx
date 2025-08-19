@@ -7,7 +7,7 @@ import TenderTable from './components/TenderTable';
 import TenderCardView from './components/TenderCardView';
 import TenderDetailModal from './components/TenderDetailModal';
 
-// ⬇️ NUEVO: lector de Google Sheets
+// Google Sheets
 import { fetchGoogleSheet } from '../../lib/googleSheet';
 import { SHEET_ID } from '../../lib/sheetsConfig';
 
@@ -21,22 +21,22 @@ const TenderManagement = () => {
   const [selectedTender, setSelectedTender] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  // ⬇️ NUEVO: estado con datos reales desde Google Sheets
+  // Datos reales desde Google Sheets
   const [tenders, setTenders] = useState([]);
 
-  // Cargar idioma guardado
+  // Idioma guardado
   useEffect(() => {
     const savedLanguage = localStorage.getItem('language') || 'en';
     setCurrentLanguage(savedLanguage);
   }, []);
 
-  // ⬇️ NUEVO: cargar hoja `tender_items` y mapear al formato del UI
+  // Cargar hoja `tender_items` y mapear al formato del UI
   useEffect(() => {
     async function load() {
       try {
         const rows = await fetchGoogleSheet({
           sheetId: SHEET_ID,
-          sheetName: 'tender_items', // pestaña exacta en tu Google Sheet
+          sheetName: 'tender_items',
         });
 
         // Agrupar por número de licitación
@@ -59,33 +59,33 @@ const TenderManagement = () => {
           const productsCount = new Set(g.items.map((it) => it?.presentation_code)).size;
 
           const firstDates = g.items.map((it) => it?.first_delivery_date).filter(Boolean).sort();
-          const lastDates = g.items.map((it) => it?.last_delivery_date).filter(Boolean).sort();
+          const lastDates  = g.items.map((it) => it?.last_delivery_date ).filter(Boolean).sort();
 
           const firstDate = firstDates[0] || null;
-          const lastDate = lastDates[lastDates.length - 1] || null;
+          const lastDate  = lastDates[lastDates.length - 1] || null;
 
           const deliveryDate = lastDate || firstDate;
-          const createdDate = firstDate || lastDate;
+          const createdDate  = firstDate || lastDate;
 
           const isOverdue = deliveryDate ? new Date(deliveryDate) < new Date() : false;
 
           return {
             id: idx + 1,
             tenderId: g.tenderId,
-            title: g.tenderId, // no hay "title" en la hoja; usamos el número
-            status: 'awarded', // fijo por ahora
+            title: g.tenderId, // si no existe título, usamos el ID
+            status: 'awarded',
             productsCount,
             totalValue: total,
             totalValueUSD: null,
             currency: g.currency || 'CLP',
-            stockCoverage: 30, // placeholder hasta que conectemos cálculo real
+            stockCoverage: 30, // placeholder
             deliveryDate,
             createdDate,
             isOverdue,
             completionPercentage: 0,
             tags: [],
             description: '',
-            products: [], // si luego conectas productos/presentations, los llenamos acá
+            products: [],
             deliverySchedule: [],
             deliveryAddress: '',
             transportMethod: '',
@@ -97,15 +97,13 @@ const TenderManagement = () => {
         setTenders(list);
       } catch (err) {
         console.error('Error loading tenders from Google Sheets:', err);
-        setTenders([]); // fallback
+        setTenders([]);
       }
     }
     load();
   }, []);
 
-  const handleFiltersChange = (newFilters) => {
-    setFilters(newFilters);
-  };
+  const handleFiltersChange = (newFilters) => setFilters(newFilters);
 
   const handleTenderSelect = (tenderId) => {
     setSelectedTenders((prev) =>
@@ -114,7 +112,9 @@ const TenderManagement = () => {
   };
 
   const handleTenderSelectAll = () => {
-    setSelectedTenders(selectedTenders?.length === tenders?.length ? [] : tenders?.map((t) => t?.id));
+    setSelectedTenders(
+      selectedTenders?.length === tenders?.length ? [] : tenders?.map((t) => t?.id)
+    );
   };
 
   const handleSort = (key) => {
@@ -146,7 +146,7 @@ const TenderManagement = () => {
     console.log('Bulk action:', action, 'on tenders:', selectedTenders);
   };
 
-  // Filtrado y orden
+  // Filtrado + orden
   const filteredAndSortedTenders = tenders
     ?.filter((tender) => {
       if (
@@ -158,7 +158,7 @@ const TenderManagement = () => {
       }
       if (filters?.status && tender?.status !== filters?.status) return false;
 
-      // Filtrar por packaging units (si existiera products[])
+      // Filtrar por packaging units (si existieran products[])
       if (filters?.packagingUnits) {
         const hasMatchingPackagingUnits = tender?.products?.some(
           (product) => product?.packagingUnits?.toString() === filters?.packagingUnits
@@ -202,21 +202,19 @@ const TenderManagement = () => {
       <Header />
       <div className="pt-16">
         <div className="flex">
-          {/* Filters Sidebar */}
+          {/* Sidebar de filtros */}
           <TenderFilters
             onFiltersChange={handleFiltersChange}
             isCollapsed={isFiltersCollapsed}
             onToggleCollapse={() => setIsFiltersCollapsed(!isFiltersCollapsed)}
           />
 
-          {/* Main Content */}
+          {/* Contenido principal */}
           <div className="flex-1 p-6">
-            {/* Breadcrumb */}
             <div className="mb-6">
               <Breadcrumb />
             </div>
 
-            {/* Page Header */}
             <div className="mb-6">
               <h1 className="text-3xl font-bold text-foreground">
                 {currentLanguage === 'es' ? 'Gestión de Licitaciones' : 'Tender Management'}
@@ -228,7 +226,6 @@ const TenderManagement = () => {
               </p>
             </div>
 
-            {/* Toolbar */}
             <TenderToolbar
               selectedCount={selectedTenders?.length}
               totalCount={filteredAndSortedTenders?.length}
@@ -239,9 +236,10 @@ const TenderManagement = () => {
               onBulkAction={handleBulkAction}
             />
 
-            {/* Content */}
+            {/* Tabla o tarjetas */}
             {viewMode === 'table' ? (
               <TenderTable
+                currentLanguage={currentLanguage}        {/* ✅ pasa el idioma */}
                 tenders={filteredAndSortedTenders}
                 selectedTenders={selectedTenders}
                 onTenderSelect={handleTenderSelect}
@@ -253,6 +251,7 @@ const TenderManagement = () => {
               />
             ) : (
               <TenderCardView
+                currentLanguage={currentLanguage}        {/* opcional si formateas también en cards */}
                 tenders={filteredAndSortedTenders}
                 selectedTenders={selectedTenders}
                 onTenderSelect={handleTenderSelect}
@@ -264,7 +263,7 @@ const TenderManagement = () => {
         </div>
       </div>
 
-      {/* Detail Modal */}
+      {/* Modal de detalle */}
       <TenderDetailModal
         tender={selectedTender}
         isOpen={isDetailModalOpen}

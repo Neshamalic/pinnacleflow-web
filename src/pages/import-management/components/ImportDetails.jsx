@@ -17,49 +17,43 @@ const ImportDetails = ({ open, onClose, imp, currentLanguage }) => {
   const t = (en, es) => (currentLanguage === "es" ? es : en);
   const items = imp?.items || [];
 
-  // Formateo robusto de fechas (mismas reglas que en la tabla)
+  // mismo parser robusto que en la tabla
   const fmtDate = (value) => {
-    if (!value) return "-";
+    if (value === null || value === undefined || value === "") return "-";
+    const s = String(value).trim();
 
-    if (typeof value === "string") {
-      const m = value.match(/^Date\((\d{4}),\s*(\d{1,2}),\s*(\d{1,2})\)$/i);
-      if (m) {
-        const y = Number(m[1]);
-        const mo = Number(m[2]);
-        const d = Number(m[3]);
-        const dt = new Date(y, mo - 1, d);
-        return new Intl.DateTimeFormat(
-          currentLanguage === "es" ? "es-CL" : "en-US",
-          { year: "numeric", month: "2-digit", day: "2-digit" }
-        ).format(dt);
-      }
-      const m2 = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-      if (m2) {
-        const d = Number(m2[1]), mo = Number(m2[2]), y = Number(m2[3]);
-        const dt = new Date(y, mo - 1, d);
-        return new Intl.DateTimeFormat(
-          currentLanguage === "es" ? "es-CL" : "en-US",
-          { year: "numeric", month: "2-digit", day: "2-digit" }
-        ).format(dt);
-      }
+    const m = s.match(/Date\s*\(\s*(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2}).*?\)/i);
+    if (m) {
+      const y = Number(m[1]);
+      const mo = Number(m[2]);
+      const d = Number(m[3]);
+      const dt = new Date(y, mo - 1, d);
+      return new Intl.DateTimeFormat(currentLanguage === "es" ? "es-CL" : "en-US", {
+        year: "numeric", month: "2-digit", day: "2-digit",
+      }).format(dt);
     }
 
-    const dt = new Date(value);
+    const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m2) {
+      const d = Number(m2[1]), mo = Number(m2[2]), y = Number(m2[3]);
+      const dt = new Date(y, mo - 1, d);
+      return new Intl.DateTimeFormat(currentLanguage === "es" ? "es-CL" : "en-US", {
+        year: "numeric", month: "2-digit", day: "2-digit",
+      }).format(dt);
+    }
+
+    const dt = new Date(s);
     if (!isNaN(dt)) {
-      return new Intl.DateTimeFormat(
-        currentLanguage === "es" ? "es-CL" : "en-US",
-        { year: "numeric", month: "2-digit", day: "2-digit" }
-      ).format(dt);
+      return new Intl.DateTimeFormat(currentLanguage === "es" ? "es-CL" : "en-US", {
+        year: "numeric", month: "2-digit", day: "2-digit",
+      }).format(dt);
     }
 
-    return String(value);
+    return s;
   };
 
-  // Separador de miles para cantidades
   const fmtInt = (n) =>
-    new Intl.NumberFormat(currentLanguage === "es" ? "es-CL" : "en-US").format(
-      Number(n) || 0
-    );
+    new Intl.NumberFormat(currentLanguage === "es" ? "es-CL" : "en-US").format(Number(n) || 0);
 
   return (
     <>

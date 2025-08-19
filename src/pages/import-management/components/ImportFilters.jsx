@@ -4,7 +4,7 @@ import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 
-const ImportFilters = ({ onFiltersChange, onReset }) => {
+const ImportFilters = ({ onFiltersChange = () => {}, onReset = () => {} }) => {
   const [currentLanguage, setCurrentLanguage] = useState('en');
   const [isExpanded, setIsExpanded] = useState(false);
   const [filters, setFilters] = useState({
@@ -124,12 +124,13 @@ const ImportFilters = ({ onFiltersChange, onReset }) => {
           variant="ghost"
           size="sm"
           onClick={() => setIsExpanded(!isExpanded)}
-          iconName={isExpanded ? "ChevronUp" : "ChevronDown"}
+          iconName={isExpanded ? 'ChevronUp' : 'ChevronDown'}
           iconPosition="right"
         >
           {isExpanded ? t?.showLess : t?.showMore}
         </Button>
       </div>
+
       <div className="space-y-4">
         {/* Search Bar */}
         <div className="w-full">
@@ -166,7 +167,7 @@ const ImportFilters = ({ onFiltersChange, onReset }) => {
 
         {/* Expanded Filters */}
         {isExpanded && (
-          <div className="space-y-4 pt-4 border-t border-border">
+          <div className="space-y-4 pt-4 border-top border-border">
             {/* Date Range */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input

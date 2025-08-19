@@ -17,15 +17,49 @@ const ImportDetails = ({ open, onClose, imp, currentLanguage }) => {
   const t = (en, es) => (currentLanguage === "es" ? es : en);
   const items = imp?.items || [];
 
-  const fmtDate = (d) => {
-    if (!d) return "-";
-    const dt = new Date(d);
-    if (isNaN(dt)) return String(d);
-    return new Intl.DateTimeFormat(
-      currentLanguage === "es" ? "es-CL" : "en-US",
-      { year: "numeric", month: "2-digit", day: "2-digit" }
-    ).format(dt);
+  // Formateo robusto de fechas (mismas reglas que en la tabla)
+  const fmtDate = (value) => {
+    if (!value) return "-";
+
+    if (typeof value === "string") {
+      const m = value.match(/^Date\((\d{4}),\s*(\d{1,2}),\s*(\d{1,2})\)$/i);
+      if (m) {
+        const y = Number(m[1]);
+        const mo = Number(m[2]);
+        const d = Number(m[3]);
+        const dt = new Date(y, mo - 1, d);
+        return new Intl.DateTimeFormat(
+          currentLanguage === "es" ? "es-CL" : "en-US",
+          { year: "numeric", month: "2-digit", day: "2-digit" }
+        ).format(dt);
+      }
+      const m2 = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (m2) {
+        const d = Number(m2[1]), mo = Number(m2[2]), y = Number(m2[3]);
+        const dt = new Date(y, mo - 1, d);
+        return new Intl.DateTimeFormat(
+          currentLanguage === "es" ? "es-CL" : "en-US",
+          { year: "numeric", month: "2-digit", day: "2-digit" }
+        ).format(dt);
+      }
+    }
+
+    const dt = new Date(value);
+    if (!isNaN(dt)) {
+      return new Intl.DateTimeFormat(
+        currentLanguage === "es" ? "es-CL" : "en-US",
+        { year: "numeric", month: "2-digit", day: "2-digit" }
+      ).format(dt);
+    }
+
+    return String(value);
   };
+
+  // Separador de miles para cantidades
+  const fmtInt = (n) =>
+    new Intl.NumberFormat(currentLanguage === "es" ? "es-CL" : "en-US").format(
+      Number(n) || 0
+    );
 
   return (
     <>
@@ -91,9 +125,9 @@ const ImportDetails = ({ open, onClose, imp, currentLanguage }) => {
                     <tr key={i} className="text-sm text-foreground">
                       <td className="px-4 py-3">{it?.presentation_code || "-"}</td>
                       <td className="px-4 py-3">{it?.lot_number || "-"}</td>
-                      <td className="px-4 py-3">{it?.mfg_date || "-"}</td>
-                      <td className="px-4 py-3">{it?.exp_date || "-"}</td>
-                      <td className="px-4 py-3">{it?.qty_received ?? 0}</td>
+                      <td className="px-4 py-3">{fmtDate(it?.mfg_date)}</td>
+                      <td className="px-4 py-3">{fmtDate(it?.exp_date)}</td>
+                      <td className="px-4 py-3">{fmtInt(it?.qty_received)}</td>
                       <td className="px-4 py-3">
                         {String(it?.qa_required).toLowerCase() === "true" || it?.qa_required === 1
                           ? t("Yes", "Sí")

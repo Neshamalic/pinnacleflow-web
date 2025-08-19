@@ -4,7 +4,7 @@ import Breadcrumb from "../../components/ui/Breadcrumb";
 import Icon from "../../components/AppIcon";
 import { fetchGoogleSheet } from "../../lib/googleSheet";
 import { SHEET_ID } from "../../lib/sheetsConfig";
-// 👇 Helpers de formato (ruta relativa + .js)
+
 import { fmtInt, fmtDate, toDate } from "../../utils/format.js";
 
 const Card = ({ color, icon, label, value }) => (

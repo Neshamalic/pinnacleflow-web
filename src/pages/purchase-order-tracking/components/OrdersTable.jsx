@@ -1,7 +1,6 @@
 import React from "react";
 
-const OrdersTable = ({ currentLanguage, filters, orders = [], loading }) => {
-  // Formateadores
+const OrdersTable = ({ currentLanguage, filters, orders = [], loading, onRowClick }) => {
   const fmtMoney = (currency) =>
     new Intl.NumberFormat(currentLanguage === "es" ? "es-CL" : "en-US", {
       style: "currency",
@@ -30,9 +29,7 @@ const OrdersTable = ({ currentLanguage, filters, orders = [], loading }) => {
   if (!orders.length) {
     return (
       <div className="bg-card rounded-lg border border-border p-6">
-        {currentLanguage === "es"
-          ? "No hay órdenes para mostrar."
-          : "No orders to display."}
+        {currentLanguage === "es" ? "No hay órdenes para mostrar." : "No orders to display."}
       </div>
     );
   }
@@ -43,31 +40,24 @@ const OrdersTable = ({ currentLanguage, filters, orders = [], loading }) => {
         <thead className="bg-muted/50 border-b border-border">
           <tr className="text-sm text-muted-foreground">
             <th className="px-4 py-3">PO #</th>
-            <th className="px-4 py-3">
-              {currentLanguage === "es" ? "Proveedor" : "Supplier"}
-            </th>
+            <th className="px-4 py-3">{currentLanguage === "es" ? "Proveedor" : "Supplier"}</th>
             <th className="px-4 py-3">Tender</th>
-            <th className="px-4 py-3">
-              {currentLanguage === "es" ? "Fecha Orden" : "Order Date"}
-            </th>
+            <th className="px-4 py-3">{currentLanguage === "es" ? "Fecha Orden" : "Order Date"}</th>
             <th className="px-4 py-3">Incoterm</th>
-            <th className="px-4 py-3">
-              {currentLanguage === "es" ? "Moneda" : "Currency"}
-            </th>
-            <th className="px-4 py-3">
-              {currentLanguage === "es" ? "Cant. Total" : "Total Qty"}
-            </th>
-            <th className="px-4 py-3">
-              {currentLanguage === "es" ? "Valor Total" : "Total Value"}
-            </th>
-            <th className="px-4 py-3">
-              {currentLanguage === "es" ? "Estado" : "Status"}
-            </th>
+            <th className="px-4 py-3">{currentLanguage === "es" ? "Moneda" : "Currency"}</th>
+            <th className="px-4 py-3">{currentLanguage === "es" ? "Cant. Total" : "Total Qty"}</th>
+            <th className="px-4 py-3">{currentLanguage === "es" ? "Valor Total" : "Total Value"}</th>
+            <th className="px-4 py-3">{currentLanguage === "es" ? "Estado" : "Status"}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
           {orders.map((o) => (
-            <tr key={o.poNumber} className="text-sm text-foreground">
+            <tr
+              key={o.poNumber}
+              className="text-sm text-foreground hover:bg-muted/40 cursor-pointer"
+              onClick={() => onRowClick && onRowClick(o)}
+              title={currentLanguage === "es" ? "Ver ítems" : "View items"}
+            >
               <td className="px-4 py-3 font-medium">{o.poNumber || "-"}</td>
               <td className="px-4 py-3">{o.supplier || "-"}</td>
               <td className="px-4 py-3">{o.tenderNumber || "-"}</td>
@@ -85,8 +75,6 @@ const OrdersTable = ({ currentLanguage, filters, orders = [], loading }) => {
           ))}
         </tbody>
       </table>
-
-      {/* Nota: si quieres mostrar los ítems, puedes añadir una fila expandible más adelante */}
     </div>
   );
 };

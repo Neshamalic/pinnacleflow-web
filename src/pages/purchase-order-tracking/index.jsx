@@ -7,7 +7,7 @@ import Icon from '../../components/AppIcon';
 // Componentes correctos de esta página
 import OrderSummaryCards from './components/OrderSummaryCards';
 import OrderFilters from './components/OrderFilters';
-import OrdersTable from './components/OrdersTable'; // ✅ ESTE es el correcto
+import OrdersTable from './components/OrdersTable';
 
 // Google Sheets
 import { fetchGoogleSheet } from '../../lib/googleSheet';
@@ -49,7 +49,7 @@ const PurchaseOrderTracking = () => {
 
         const [po, poi] = await Promise.all([
           fetchGoogleSheet({ sheetId: SHEET_ID, sheetName: 'purchase_orders' }),
-          fetchGoogleSheet({ sheetId: SHEET_ID, sheetName: 'purchase_order_items' }),
+          fetchGoogleSheet({ sheetId: SHEET_ID, sheetName: 'purchase_order_items' })
         ]);
 
         // indexar ítems por po_number
@@ -65,7 +65,8 @@ const PurchaseOrderTracking = () => {
           const its = itemsByPO[o?.po_number] || [];
           const totalQty = its.reduce((s, it) => s + (Number(it?.qty_ordered) || 0), 0);
           const totalValue = its.reduce(
-            (s, it) => s + (Number(it?.qty_ordered) || 0) * (Number(it?.unit_price) || 0),
+            (s, it) =>
+              s + (Number(it?.qty_ordered) || 0) * (Number(it?.unit_price) || 0),
             0
           );
 
@@ -78,9 +79,9 @@ const PurchaseOrderTracking = () => {
             incoterm: o?.incoterm || '',
             currency: o?.currency || 'CLP',
             status: o?.status || 'open',
-            items: its,       // [{ presentation_code, qty_ordered, unit_price, notes }, ...]
+            items: its, // [{ presentation_code, qty_ordered, unit_price, notes }, ...]
             totalQty,
-            totalValue,
+            totalValue
           };
         });
 
@@ -130,7 +131,7 @@ const PurchaseOrderTracking = () => {
   const lastUpdatedLabel = lastUpdated
     ? new Intl.DateTimeFormat(currentLanguage === 'es' ? 'es-CL' : 'en-US', {
         hour: '2-digit',
-        minute: '2-digit',
+        minute: '2-digit'
       }).format(lastUpdated)
     : null;
 
@@ -167,4 +168,52 @@ const PurchaseOrderTracking = () => {
                 </Button>
                 <Button
                   variant="default"
-                  on
+                  onClick={handleCreateOrder}
+                  iconName="Plus"
+                  iconPosition="left"
+                >
+                  {currentLanguage === 'es' ? 'Nueva Orden' : 'New Order'}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Summary Cards */}
+          <OrderSummaryCards currentLanguage={currentLanguage} />
+
+          {/* Filters */}
+          <OrderFilters
+            currentLanguage={currentLanguage}
+            onFiltersChange={handleFiltersChange}
+          />
+
+          {/* Orders Table */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-foreground">
+                {currentLanguage === 'es' ? 'Órdenes de Compra' : 'Purchase Orders'}
+              </h2>
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                <Icon name="Clock" size={16} />
+                <span>
+                  {currentLanguage === 'es'
+                    ? `Última actualización: ${lastUpdatedLabel || 'cargando…'}`
+                    : `Last updated: ${lastUpdatedLabel || 'loading…'}`}
+                </span>
+              </div>
+            </div>
+
+            <OrdersTable
+              currentLanguage={currentLanguage}
+              filters={filters}
+              loading={loading}
+              orders={filteredOrders}
+            />
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default PurchaseOrderTracking;

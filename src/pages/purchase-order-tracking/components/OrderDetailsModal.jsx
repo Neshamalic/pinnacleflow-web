@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { fmtCurrency, fmtInt } from "../../../utils/format.js";
 
 const Backdrop = ({ onClose }) => (
   <div
@@ -8,18 +9,21 @@ const Backdrop = ({ onClose }) => (
   />
 );
 
-const OrderItemsModal = ({ open, onClose, order, currentLanguage }) => {
+const OrderItemsModal = ({ open, onClose, order, currentLanguage = "en" }) => {
   if (!open) return null;
 
+  // Cerrar con Escape
+  useEffect(() => {
+    const handler = (e) => e.key === "Escape" && onClose && onClose();
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
   const t = (en, es) => (currentLanguage === "es" ? es : en);
-  const fmtMoney = (currency) =>
-    new Intl.NumberFormat(currentLanguage === "es" ? "es-CL" : "en-US", {
-      style: "currency",
-      currency: currency || "CLP",
-      maximumFractionDigits: 0,
-    });
 
   const items = order?.items || [];
+  const currency = order?.currency || "CLP";
+
   const total = items.reduce(
     (s, it) =>
       s + (Number(it?.qty_ordered) || 0) * (Number(it?.unit_price) || 0),
@@ -60,7 +64,9 @@ const OrderItemsModal = ({ open, onClose, order, currentLanguage }) => {
                       {t("Presentation", "Presentación")}
                     </th>
                     <th className="px-4 py-3">{t("Qty", "Cant.")}</th>
-                    <th className="px-4 py-3">{t("Unit Price", "Precio Unit.")}</th>
+                    <th className="px-4 py-3">
+                      {t("Unit Price", "Precio Unit.")}
+                    </th>
                     <th className="px-4 py-3">{t("Line Total", "Total Línea")}</th>
                     <th className="px-4 py-3">{t("Notes", "Notas")}</th>
                   </tr>
@@ -74,12 +80,12 @@ const OrderItemsModal = ({ open, onClose, order, currentLanguage }) => {
                         <td className="px-4 py-3">
                           {it?.presentation_code || "-"}
                         </td>
-                        <td className="px-4 py-3">{qty}</td>
+                        <td className="px-4 py-3">{fmtInt(qty, currentLanguage)}</td>
                         <td className="px-4 py-3">
-                          {fmtMoney(order?.currency).format(price)}
+                          {fmtCurrency(price, currency, currentLanguage)}
                         </td>
                         <td className="px-4 py-3">
-                          {fmtMoney(order?.currency).format(qty * price)}
+                          {fmtCurrency(qty * price, currency, currentLanguage)}
                         </td>
                         <td className="px-4 py-3">{it?.notes || "-"}</td>
                       </tr>
@@ -92,7 +98,7 @@ const OrderItemsModal = ({ open, onClose, order, currentLanguage }) => {
                       {t("Total", "Total")}
                     </td>
                     <td className="px-4 py-3 font-bold">
-                      {fmtMoney(order?.currency).format(total)}
+                      {fmtCurrency(total, currency, currentLanguage)}
                     </td>
                     <td />
                   </tr>

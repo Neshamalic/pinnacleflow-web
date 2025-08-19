@@ -1,4 +1,5 @@
 import React from "react";
+import { fmtDate, fmtInt } from "../../../utils/format.js"; // ← regla de oro: incluye .js
 
 const Backdrop = ({ onClose }) => (
   <div onClick={onClose} className="fixed inset-0 bg-black/40 z-40" aria-hidden="true" />
@@ -11,49 +12,13 @@ const Row = ({ label, value }) => (
   </div>
 );
 
-const ImportDetails = ({ open, onClose, imp, currentLanguage }) => {
+const ImportDetails = ({ open = false, onClose = () => {}, imp = {}, currentLanguage = "en" }) => {
   if (!open) return null;
 
-  const t = (en, es) => (currentLanguage === "es" ? es : en);
-  const items = imp?.items || [];
+  const lang = currentLanguage || "en";
+  const t = (en, es) => (lang === "es" ? es : en);
 
-  // mismo parser robusto que en la tabla
-  const fmtDate = (value) => {
-    if (value === null || value === undefined || value === "") return "-";
-    const s = String(value).trim();
-
-    const m = s.match(/Date\s*\(\s*(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2}).*?\)/i);
-    if (m) {
-      const y = Number(m[1]);
-      const mo = Number(m[2]);
-      const d = Number(m[3]);
-      const dt = new Date(y, mo - 1, d);
-      return new Intl.DateTimeFormat(currentLanguage === "es" ? "es-CL" : "en-US", {
-        year: "numeric", month: "2-digit", day: "2-digit",
-      }).format(dt);
-    }
-
-    const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (m2) {
-      const d = Number(m2[1]), mo = Number(m2[2]), y = Number(m2[3]);
-      const dt = new Date(y, mo - 1, d);
-      return new Intl.DateTimeFormat(currentLanguage === "es" ? "es-CL" : "en-US", {
-        year: "numeric", month: "2-digit", day: "2-digit",
-      }).format(dt);
-    }
-
-    const dt = new Date(s);
-    if (!isNaN(dt)) {
-      return new Intl.DateTimeFormat(currentLanguage === "es" ? "es-CL" : "en-US", {
-        year: "numeric", month: "2-digit", day: "2-digit",
-      }).format(dt);
-    }
-
-    return s;
-  };
-
-  const fmtInt = (n) =>
-    new Intl.NumberFormat(currentLanguage === "es" ? "es-CL" : "en-US").format(Number(n) || 0);
+  const items = Array.isArray(imp?.items) ? imp.items : [];
 
   return (
     <>
@@ -70,20 +35,17 @@ const ImportDetails = ({ open, onClose, imp, currentLanguage }) => {
                 {t("PO", "PO")}: {imp?.poNumber || "-"} · BL/AWB: {imp?.blAwb || "-"}
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="text-muted-foreground hover:text-foreground text-sm"
-            >
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-sm">
               {t("Close", "Cerrar")}
             </button>
           </div>
 
           {/* Summary */}
           <div className="px-6 py-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 border-b border-border">
-            <Row label="Vessel/Aircraft" value={imp?.vessel} />
-            <Row label="ETA" value={fmtDate(imp?.eta)} />
-            <Row label="ATD" value={fmtDate(imp?.atd)} />
-            <Row label="ATA" value={fmtDate(imp?.ata)} />
+            <Row label={t("Vessel/Aircraft", "Nave/Avión")} value={imp?.vessel} />
+            <Row label="ETA" value={fmtDate(imp?.eta, lang)} />
+            <Row label="ATD" value={fmtDate(imp?.atd, lang)} />
+            <Row label="ATA" value={fmtDate(imp?.ata, lang)} />
             <Row label={t("Broker", "Agente")} value={imp?.customsBroker} />
             <Row label={t("Warehouse", "Bodega")} value={imp?.warehouse} />
           </div>
@@ -119,9 +81,9 @@ const ImportDetails = ({ open, onClose, imp, currentLanguage }) => {
                     <tr key={i} className="text-sm text-foreground">
                       <td className="px-4 py-3">{it?.presentation_code || "-"}</td>
                       <td className="px-4 py-3">{it?.lot_number || "-"}</td>
-                      <td className="px-4 py-3">{fmtDate(it?.mfg_date)}</td>
-                      <td className="px-4 py-3">{fmtDate(it?.exp_date)}</td>
-                      <td className="px-4 py-3">{fmtInt(it?.qty_received)}</td>
+                      <td className="px-4 py-3">{fmtDate(it?.mfg_date, lang)}</td>
+                      <td className="px-4 py-3">{fmtDate(it?.exp_date, lang)}</td>
+                      <td className="px-4 py-3">{fmtInt(it?.qty_received, lang)}</td>
                       <td className="px-4 py-3">
                         {String(it?.qa_required).toLowerCase() === "true" || it?.qa_required === 1
                           ? t("Yes", "Sí")

@@ -88,8 +88,10 @@ const TenderTable = ({
                     {t.status}
                   </span>
                 </td>
-                <td className="px-4 py-3">{fmtDate(t.deliveryDate, lang)}</td> {/* ✅ fechas */}
-                <td className="px-4 py-3">{fmtInt(t.stockCoverage, lang)}%</td>
+                <td className="px-4 py-3">{fmtDate(t.deliveryDate, lang)}</td>
+                <td className="px-4 py-3">
+                  {fmtInt(t.stockCoverage, lang)} {lang === 'es' ? 'días' : 'days'}
+                </td>
                 <td className="px-4 py-3">
                   {fmtCurrency(t.totalValue, t.currency || 'CLP', lang)}
                 </td>

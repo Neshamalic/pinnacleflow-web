@@ -1,9 +1,12 @@
+// src/pages/demand-forecasting/index.jsx
 import React, { useEffect, useState } from "react";
 import Header from "../../components/ui/Header";
 import Breadcrumb from "../../components/ui/Breadcrumb";
 import Icon from "../../components/AppIcon";
 import { fetchGoogleSheet } from "../../lib/googleSheet";
 import { SHEET_ID } from "../../lib/sheetsConfig";
+
+import { fmtInt, fmtDate, fmtPercent } from "../../utils/format.js";
 
 const DemandForecasting = () => {
   const [lang, setLang] = useState("en");
@@ -44,7 +47,7 @@ const DemandForecasting = () => {
 
   // Agrupado por mes (AAAA-MM)
   const byMonth = rows.reduce((acc, r) => {
-    const keyRaw = String(r?.month_of_supply || "").slice(0, 7);
+    const keyRaw = String(r?.month_of_supply || "").slice(0, 7); // "2024-05"
     const key = keyRaw || "N/A";
     const req = Number(r?.qty_requested) || 0;
     const stk = Number(r?.current_stock) || 0;
@@ -56,6 +59,17 @@ const DemandForecasting = () => {
   const monthRows = Object.entries(byMonth)
     .map(([month, v]) => ({ month, requested: v.req, stock: v.stk }))
     .sort((a, b) => (a.month > b.month ? 1 : -1));
+
+  // Etiqueta amigable para el mes (usa helpers)
+  const monthLabel = (key) => {
+    if (!key || key === "N/A") return "-";
+    // construimos día 1 para formatear el mes/año
+    return fmtDate(`${key}-01`, lang, {
+      year: "numeric",
+      month: "short", // "may" / "may." / "may."
+      day: undefined, // lo ignora igual, pero por si acaso
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -88,7 +102,9 @@ const DemandForecasting = () => {
                 </div>
               </div>
               <div className="space-y-1">
-                <p className="text-2xl font-bold text-foreground">{totalRequested}</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {fmtInt(totalRequested, lang)}
+                </p>
                 <p className="text-sm text-muted-foreground">
                   {t("Total Requested (all)", "Total Requerido (todo)")}
                 </p>
@@ -102,7 +118,9 @@ const DemandForecasting = () => {
                 </div>
               </div>
               <div className="space-y-1">
-                <p className="text-2xl font-bold text-foreground">{totalStock}</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {fmtInt(totalStock, lang)}
+                </p>
                 <p className="text-sm text-muted-foreground">
                   {t("Current Stock (all)", "Stock Actual (todo)")}
                 </p>
@@ -133,14 +151,16 @@ const DemandForecasting = () => {
                   </thead>
                   <tbody className="divide-y divide-border">
                     {monthRows.map((r) => {
-                      const coverage =
-                        r.requested > 0 ? `${Math.round((r.stock / r.requested) * 100)}%` : "-";
+                      const cov =
+                        r.requested > 0
+                          ? fmtPercent((r.stock / r.requested) * 100, lang, 0)
+                          : "-";
                       return (
                         <tr key={r.month} className="text-sm text-foreground">
-                          <td className="px-4 py-3">{r.month}</td>
-                          <td className="px-4 py-3">{r.requested}</td>
-                          <td className="px-4 py-3">{r.stock}</td>
-                          <td className="px-4 py-3">{coverage}</td>
+                          <td className="px-4 py-3">{monthLabel(r.month)}</td>
+                          <td className="px-4 py-3">{fmtInt(r.requested, lang)}</td>
+                          <td className="px-4 py-3">{fmtInt(r.stock, lang)}</td>
+                          <td className="px-4 py-3">{cov}</td>
                         </tr>
                       );
                     })}

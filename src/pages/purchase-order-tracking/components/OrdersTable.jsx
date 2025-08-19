@@ -1,5 +1,5 @@
 import React from 'react';
-import { fmtDate, fmtInt, fmtCurrency, localeFromLang } from '../../../utils/format';
+import { fmtDate, fmtInt, fmtCurrency } from '../../../utils/format.js';
 
 const OrdersTable = ({ currentLanguage, loading, orders = [] }) => {
   const lang = currentLanguage || 'en';

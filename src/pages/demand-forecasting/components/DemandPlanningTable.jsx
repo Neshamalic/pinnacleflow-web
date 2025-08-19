@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import { fmtInt } from '../../../utils/format.js';
 
 const DemandPlanningTable = () => {
   const [currentLanguage, setCurrentLanguage] = useState('en');
@@ -102,16 +103,11 @@ const DemandPlanningTable = () => {
     );
   };
 
-  const formatNumber = (num) => {
-    return new Intl.NumberFormat(currentLanguage === 'es' ? 'es-CL' : 'en-US')?.format(num);
-  };
-
-  const formatPackagingInfo = (packagingUnits) => {
-    return `${packagingUnits} ${currentLanguage === 'es' ? 'unidades' : 'units'}`;
-  };
+  const formatPackagingInfo = (packagingUnits) =>
+    `${fmtInt(packagingUnits, currentLanguage)} ${currentLanguage === 'es' ? 'unidades' : 'units'}`;
 
   const calculateDaysOfSupply = (stock, demand) => {
-    if (demand === 0) return Infinity;
+    if (!demand) return Infinity;
     return Math.floor((stock / demand) * 30);
   };
 
@@ -123,28 +119,18 @@ const DemandPlanningTable = () => {
     setSortConfig({ key, direction });
   };
 
-  const sortedData = [...mockPlanningData]?.sort((a, b) => {
+  const sortedData = [...mockPlanningData].sort((a, b) => {
     if (!sortConfig?.key) return 0;
-
     const aValue = a?.[sortConfig?.key];
     const bValue = b?.[sortConfig?.key];
-
-    if (aValue < bValue) {
-      return sortConfig?.direction === 'asc' ? -1 : 1;
-    }
-    if (aValue > bValue) {
-      return sortConfig?.direction === 'asc' ? 1 : -1;
-    }
+    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
     return 0;
   });
 
   const getSortIcon = (column) => {
-    if (sortConfig?.key !== column) {
-      return <Icon name="ArrowUpDown" size={14} className="opacity-50" />;
-    }
-    return sortConfig?.direction === 'asc' 
-      ? <Icon name="ArrowUp" size={14} />
-      : <Icon name="ArrowDown" size={14} />;
+    if (sortConfig?.key !== column) return <Icon name="ArrowUpDown" size={14} className="opacity-50" />;
+    return sortConfig?.direction === 'asc' ? <Icon name="ArrowUp" size={14} /> : <Icon name="ArrowDown" size={14} />;
   };
 
   return (
@@ -210,7 +196,7 @@ const DemandPlanningTable = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {sortedData?.map((item) => {
+            {sortedData.map((item) => {
               const daysOfSupply = calculateDaysOfSupply(item?.currentStock, item?.forecastedDemand);
               return (
                 <tr key={item?.id} className="hover:bg-muted/50 transition-colors">
@@ -218,7 +204,7 @@ const DemandPlanningTable = () => {
                     <div className="font-medium text-foreground">{item?.product}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="font-medium text-foreground">{formatNumber(item?.currentStock)}</div>
+                    <div className="font-medium text-foreground">{fmtInt(item?.currentStock, currentLanguage)}</div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-muted-foreground">
@@ -226,25 +212,28 @@ const DemandPlanningTable = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="font-medium text-foreground">{formatNumber(item?.forecastedDemand)}</div>
+                    <div className="font-medium text-foreground">{fmtInt(item?.forecastedDemand, currentLanguage)}</div>
                     <div className="text-xs text-muted-foreground">
                       {currentLanguage === 'es' ? 'mensual' : 'monthly'}
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className={`font-medium ${
-                      daysOfSupply <= 15 ? 'text-red-600' :
-                      daysOfSupply <= 30 ? 'text-yellow-600' : 'text-green-600'
-                    }`}>
+                    <div
+                      className={`font-medium ${
+                        daysOfSupply <= 15
+                          ? 'text-red-600'
+                          : daysOfSupply <= 30
+                          ? 'text-yellow-600'
+                          : 'text-green-600'
+                      }`}
+                    >
                       {daysOfSupply === Infinity ? '∞' : `${daysOfSupply}d`}
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="font-medium text-foreground">{formatNumber(item?.suggestedOrder)}</div>
+                    <div className="font-medium text-foreground">{fmtInt(item?.suggestedOrder, currentLanguage)}</div>
                   </td>
-                  <td className="px-6 py-4">
-                    {getStatusBadge(item?.status)}
-                  </td>
+                  <td className="px-6 py-4">{getStatusBadge(item?.status)}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center space-x-2">
                       <Button variant="outline" size="sm" iconName="ShoppingCart">

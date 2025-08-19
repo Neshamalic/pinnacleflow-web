@@ -4,6 +4,8 @@ import Breadcrumb from "../../components/ui/Breadcrumb";
 import Icon from "../../components/AppIcon";
 import { fetchGoogleSheet } from "../../lib/googleSheet";
 import { SHEET_ID } from "../../lib/sheetsConfig";
+// 👇 Importa helpers de formato (ruta relativa + .js)
+import { fmtDate, toDate } from "../../utils/format.js";
 
 const CommunicationsLog = () => {
   const [lang, setLang] = useState("en");
@@ -29,7 +31,6 @@ const CommunicationsLog = () => {
         setRows(Array.isArray(data) ? data : []);
         setLastUpdated(new Date());
       } catch (e) {
-        // Si la pestaña no existe o no hay permisos
         console.error("Communications load error:", e);
         setError("missing");
         setRows([]);
@@ -41,16 +42,6 @@ const CommunicationsLog = () => {
   }, []);
 
   const t = (en, es) => (lang === "es" ? es : en);
-  const fmtDate = (d) => {
-    if (!d) return "-";
-    const dt = new Date(d);
-    if (isNaN(dt)) return String(d);
-    return new Intl.DateTimeFormat(lang === "es" ? "es-CL" : "en-US", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(dt);
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -103,10 +94,15 @@ const CommunicationsLog = () => {
                   <tbody className="divide-y divide-border">
                     {rows
                       .slice()
-                      .sort((a, b) => new Date(b?.date || 0) - new Date(a?.date || 0))
+                      // ordena con parser robusto
+                      .sort((a, b) => {
+                        const da = toDate(a?.date);
+                        const db = toDate(b?.date);
+                        return (db?.getTime?.() || 0) - (da?.getTime?.() || 0);
+                      })
                       .map((r, i) => (
                         <tr key={i} className="text-sm text-foreground">
-                          <td className="px-4 py-3">{fmtDate(r?.date)}</td>
+                          <td className="px-4 py-3">{fmtDate(r?.date, lang)}</td>
                           <td className="px-4 py-3">{r?.subject || "-"}</td>
                           <td className="px-4 py-3">{r?.type || "-"}</td>
                           <td className="px-4 py-3">{r?.sender || "-"}</td>

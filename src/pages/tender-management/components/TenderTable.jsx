@@ -1,5 +1,5 @@
 import React from 'react';
-import { fmtDate, fmtInt, fmtCurrency } from '../../../utils/format';
+import { fmtDate, fmtInt, fmtCurrency } from '../../../utils/format.js';
 
 const TenderTable = ({
   currentLanguage = 'en',

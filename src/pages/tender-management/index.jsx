@@ -7,7 +7,6 @@ import TenderTable from './components/TenderTable';
 import TenderCardView from './components/TenderCardView';
 import TenderDetailModal from './components/TenderDetailModal';
 
-// Google Sheets
 import { fetchGoogleSheet } from '../../lib/googleSheet';
 import { SHEET_ID } from '../../lib/sheetsConfig';
 
@@ -21,16 +20,13 @@ const TenderManagement = () => {
   const [selectedTender, setSelectedTender] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  // Datos reales desde Google Sheets
   const [tenders, setTenders] = useState([]);
 
-  // Idioma guardado
   useEffect(() => {
     const savedLanguage = localStorage.getItem('language') || 'en';
     setCurrentLanguage(savedLanguage);
   }, []);
 
-  // Cargar hoja `tender_items` y mapear al formato del UI
   useEffect(() => {
     async function load() {
       try {
@@ -39,7 +35,6 @@ const TenderManagement = () => {
           sheetName: 'tender_items',
         });
 
-        // Agrupar por número de licitación
         const groups = {};
         rows.forEach((r) => {
           const tn = r?.tender_number;
@@ -48,7 +43,6 @@ const TenderManagement = () => {
           groups[tn].items.push(r);
         });
 
-        // Construir objetos esperados por la UI
         const list = Object.values(groups).map((g, idx) => {
           const total = g.items.reduce((sum, it) => {
             const qty = Number(it?.awarded_qty) || 0;
@@ -72,13 +66,13 @@ const TenderManagement = () => {
           return {
             id: idx + 1,
             tenderId: g.tenderId,
-            title: g.tenderId, // si no existe título, usamos el ID
+            title: g.tenderId,
             status: 'awarded',
             productsCount,
             totalValue: total,
             totalValueUSD: null,
             currency: g.currency || 'CLP',
-            stockCoverage: 30, // placeholder
+            stockCoverage: 30,
             deliveryDate,
             createdDate,
             isOverdue,
@@ -146,7 +140,6 @@ const TenderManagement = () => {
     console.log('Bulk action:', action, 'on tenders:', selectedTenders);
   };
 
-  // Filtrado + orden
   const filteredAndSortedTenders = tenders
     ?.filter((tender) => {
       if (
@@ -158,7 +151,6 @@ const TenderManagement = () => {
       }
       if (filters?.status && tender?.status !== filters?.status) return false;
 
-      // Filtrar por packaging units (si existieran products[])
       if (filters?.packagingUnits) {
         const hasMatchingPackagingUnits = tender?.products?.some(
           (product) => product?.packagingUnits?.toString() === filters?.packagingUnits
@@ -202,14 +194,12 @@ const TenderManagement = () => {
       <Header />
       <div className="pt-16">
         <div className="flex">
-          {/* Sidebar de filtros */}
           <TenderFilters
             onFiltersChange={handleFiltersChange}
             isCollapsed={isFiltersCollapsed}
             onToggleCollapse={() => setIsFiltersCollapsed(!isFiltersCollapsed)}
           />
 
-          {/* Contenido principal */}
           <div className="flex-1 p-6">
             <div className="mb-6">
               <Breadcrumb />
@@ -234,3 +224,42 @@ const TenderManagement = () => {
               onNewTender={handleNewTender}
               onExport={handleExport}
               onBulkAction={handleBulkAction}
+            />
+
+            {viewMode === 'table' ? (
+              <TenderTable
+                currentLanguage={currentLanguage}
+                tenders={filteredAndSortedTenders}
+                selectedTenders={selectedTenders}
+                onTenderSelect={handleTenderSelect}
+                onTenderSelectAll={handleTenderSelectAll}
+                onTenderView={handleTenderView}
+                onTenderEdit={handleTenderEdit}
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              />
+            ) : (
+              <TenderCardView
+                currentLanguage={currentLanguage}
+                tenders={filteredAndSortedTenders}
+                selectedTenders={selectedTenders}
+                onTenderSelect={handleTenderSelect}
+                onTenderView={handleTenderView}
+                onTenderEdit={handleTenderEdit}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      <TenderDetailModal
+        tender={selectedTender}
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        onEdit={handleTenderEdit}
+      />
+    </div>
+  );
+};
+
+export default TenderManagement;

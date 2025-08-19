@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
-import Button from '../../../components/ui/Button';
-import Input from '../../../components/ui/Input';
-import Select from '../../../components/ui/Select';
+import Button from '../../../components/ui/Button.jsx';
+import Input from '../../../components/ui/Input.jsx';
+import Select from '../../../components/ui/Select.jsx';
 
-const OrderFilters = ({ currentLanguage, onFiltersChange }) => {
+const OrderFilters = ({ currentLanguage = 'en', onFiltersChange }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [filters, setFilters] = useState({
     search: '',
@@ -14,6 +14,12 @@ const OrderFilters = ({ currentLanguage, onFiltersChange }) => {
     dateRange: '',
     productCategory: ''
   });
+
+  // Notificar filtros iniciales al padre
+  useEffect(() => {
+    onFiltersChange && onFiltersChange(filters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const manufacturingStatusOptions = [
     { value: '', label: currentLanguage === 'es' ? 'Todos los Estados' : 'All Statuses' },
@@ -53,7 +59,7 @@ const OrderFilters = ({ currentLanguage, onFiltersChange }) => {
   const handleFilterChange = (key, value) => {
     const newFilters = { ...filters, [key]: value };
     setFilters(newFilters);
-    onFiltersChange(newFilters);
+    onFiltersChange && onFiltersChange(newFilters);
   };
 
   const handleClearFilters = () => {
@@ -66,7 +72,7 @@ const OrderFilters = ({ currentLanguage, onFiltersChange }) => {
       productCategory: ''
     };
     setFilters(clearedFilters);
-    onFiltersChange(clearedFilters);
+    onFiltersChange && onFiltersChange(clearedFilters);
   };
 
   return (
@@ -81,60 +87,68 @@ const OrderFilters = ({ currentLanguage, onFiltersChange }) => {
           onClick={() => setIsExpanded(!isExpanded)}
           iconName={isExpanded ? 'ChevronUp' : 'ChevronDown'}
           iconPosition="right"
+          aria-expanded={isExpanded}
+          aria-controls="order-filters-advanced"
         >
-          {isExpanded 
+          {isExpanded
             ? (currentLanguage === 'es' ? 'Ocultar' : 'Hide')
             : (currentLanguage === 'es' ? 'Mostrar' : 'Show')
           }
         </Button>
       </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
         <Input
           type="search"
           placeholder={currentLanguage === 'es' ? 'Buscar por PO, licitación...' : 'Search by PO, tender...'}
-          value={filters?.search}
+          value={filters.search}
           onChange={(e) => handleFilterChange('search', e?.target?.value)}
           className="w-full"
         />
-        
+
         <Select
           placeholder={currentLanguage === 'es' ? 'Estado de Fabricación' : 'Manufacturing Status'}
           options={manufacturingStatusOptions}
-          value={filters?.manufacturingStatus}
+          value={filters.manufacturingStatus}
           onChange={(value) => handleFilterChange('manufacturingStatus', value)}
         />
 
         <Select
           placeholder={currentLanguage === 'es' ? 'Estado QC' : 'QC Status'}
           options={qcStatusOptions}
-          value={filters?.qcStatus}
+          value={filters.qcStatus}
           onChange={(value) => handleFilterChange('qcStatus', value)}
         />
       </div>
+
       {isExpanded && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4 border-t border-border">
+        <div
+          id="order-filters-advanced"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4 border-t border-border"
+        >
           <Select
             placeholder={currentLanguage === 'es' ? 'Tipo de Transporte' : 'Transport Type'}
             options={transportTypeOptions}
-            value={filters?.transportType}
+            value={filters.transportType}
             onChange={(value) => handleFilterChange('transportType', value)}
           />
 
           <Select
             placeholder={currentLanguage === 'es' ? 'Rango de Fechas' : 'Date Range'}
             options={dateRangeOptions}
-            value={filters?.dateRange}
+            value={filters.dateRange}
             onChange={(value) => handleFilterChange('dateRange', value)}
           />
 
           <Select
             placeholder={currentLanguage === 'es' ? 'Categoría de Producto' : 'Product Category'}
             options={productCategoryOptions}
-            value={filters?.productCategory}
+            value={filters.productCategory}
             onChange={(value) => handleFilterChange('productCategory', value)}
           />
         </div>
       )}
+
       <div className="flex justify-end mt-4">
         <Button
           variant="outline"

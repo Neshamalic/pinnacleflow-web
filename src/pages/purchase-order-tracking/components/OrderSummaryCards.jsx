@@ -1,18 +1,15 @@
 import React from 'react';
 import Icon from '../../../components/AppIcon';
+import { fmtInt } from '../../../utils/format.js';
 
-const OrderSummaryCards = ({ currentLanguage, orders = [] }) => {
+const OrderSummaryCards = ({ currentLanguage = 'en', orders = [] }) => {
   // Helpers
   const t = (en, es) => (currentLanguage === 'es' ? es : en);
-  const fmtInt = (n) =>
-    typeof n === 'number'
-      ? new Intl.NumberFormat(currentLanguage === 'es' ? 'es-CL' : 'en-US').format(n)
-      : n;
 
-  // Normalize status strings (e.g., "in process", "in_process" -> "inprocess")
+  // Normaliza estados (e.g., "in process", "in_process" → "inprocess")
   const norm = (s) => (s ? String(s).toLowerCase().replace(/\s|_/g, '') : '');
 
-  // Metrics from real orders
+  // Métricas desde órdenes reales
   const totalOrders = orders.length;
 
   const inProcess = orders.filter((o) =>
@@ -27,7 +24,7 @@ const OrderSummaryCards = ({ currentLanguage, orders = [] }) => {
     ['shipped', 'intransit', 'dispatched', 'despatched'].includes(norm(o?.status))
   ).length;
 
-  // "Avg. Production Time": as a simple proxy, average days since orderDate (valid dates only)
+  // Promedio de días desde orderDate (si hay fechas válidas)
   const dayDiffs = orders
     .map((o) => {
       const d = new Date(o?.orderDate);
@@ -46,7 +43,7 @@ const OrderSummaryCards = ({ currentLanguage, orders = [] }) => {
       id: 'total-orders',
       titleEn: 'Total Orders',
       titleEs: 'Órdenes Totales',
-      value: fmtInt(totalOrders),
+      value: fmtInt(totalOrders, currentLanguage),
       change: null,
       changeType: 'neutral',
       icon: 'ShoppingCart',
@@ -56,7 +53,7 @@ const OrderSummaryCards = ({ currentLanguage, orders = [] }) => {
       id: 'in-process',
       titleEn: 'In Process',
       titleEs: 'En Proceso',
-      value: fmtInt(inProcess),
+      value: fmtInt(inProcess, currentLanguage),
       change: null,
       changeType: 'neutral',
       icon: 'Clock',
@@ -66,7 +63,7 @@ const OrderSummaryCards = ({ currentLanguage, orders = [] }) => {
       id: 'ready',
       titleEn: 'Ready',
       titleEs: 'Listo',
-      value: fmtInt(ready),
+      value: fmtInt(ready, currentLanguage),
       change: null,
       changeType: 'neutral',
       icon: 'CheckCircle',
@@ -76,7 +73,7 @@ const OrderSummaryCards = ({ currentLanguage, orders = [] }) => {
       id: 'shipped',
       titleEn: 'Shipped',
       titleEs: 'Enviado',
-      value: fmtInt(shipped),
+      value: fmtInt(shipped, currentLanguage),
       change: null,
       changeType: 'neutral',
       icon: 'Truck',
@@ -86,10 +83,7 @@ const OrderSummaryCards = ({ currentLanguage, orders = [] }) => {
       id: 'avg-timeline',
       titleEn: 'Avg. Production Time',
       titleEs: 'Tiempo Promedio',
-      value:
-        avgDays === null
-          ? '-'
-          : `${fmtInt(avgDays)} ${t('days', 'días')}`,
+      value: avgDays === null ? '-' : `${fmtInt(avgDays, currentLanguage)} ${t('days', 'días')}`,
       change: null,
       changeType: 'neutral',
       icon: 'Calendar',

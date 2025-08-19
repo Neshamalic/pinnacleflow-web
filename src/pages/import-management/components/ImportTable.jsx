@@ -1,48 +1,11 @@
+// src/pages/import-management/components/ImportTable.jsx
 import React from "react";
+import { fmtDate, fmtInt } from "../../../utils/format.js"; // 👈 importa helpers
 
-const ImportTable = ({ currentLanguage, importsData = [], loading, onRowClick }) => {
-  // Date formatter robusto
-  const fmtDate = (value) => {
-    if (value === null || value === undefined || value === "") return "-";
-    const s = String(value).trim();
-
-    // Date(2024,10,26) o con espacios/extra: Date ( 2024 , 10 , 26 ... )
-    const m = s.match(/Date\s*\(\s*(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2}).*?\)/i);
-    if (m) {
-      const y = Number(m[1]);
-      const mo = Number(m[2]); // 1..12
-      const d = Number(m[3]);
-      const dt = new Date(y, mo - 1, d);
-      return new Intl.DateTimeFormat(currentLanguage === "es" ? "es-CL" : "en-US", {
-        year: "numeric", month: "2-digit", day: "2-digit",
-      }).format(dt);
-    }
-
-    // dd/mm/yyyy
-    const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (m2) {
-      const d = Number(m2[1]), mo = Number(m2[2]), y = Number(m2[3]);
-      const dt = new Date(y, mo - 1, d);
-      return new Intl.DateTimeFormat(currentLanguage === "es" ? "es-CL" : "en-US", {
-        year: "numeric", month: "2-digit", day: "2-digit",
-      }).format(dt);
-    }
-
-    // ISO/timestamp u otros formatos que JS entienda
-    const dt = new Date(s);
-    if (!isNaN(dt)) {
-      return new Intl.DateTimeFormat(currentLanguage === "es" ? "es-CL" : "en-US", {
-        year: "numeric", month: "2-digit", day: "2-digit",
-      }).format(dt);
-    }
-
-    // Si nada calza, devuelve tal cual
-    return s;
-  };
-
-  // separador de miles
-  const fmtInt = (n) =>
-    new Intl.NumberFormat(currentLanguage === "es" ? "es-CL" : "en-US").format(Number(n) || 0);
+const ImportTable = ({ currentLanguage = "en", importsData = [], loading = false, onRowClick }) => {
+  // Helpers “curriados” para no repetir el idioma en cada llamada
+  const d = (value) => fmtDate(value, currentLanguage);
+  const i = (value) => fmtInt(value, currentLanguage);
 
   if (loading) {
     return (
@@ -52,7 +15,7 @@ const ImportTable = ({ currentLanguage, importsData = [], loading, onRowClick })
     );
   }
 
-  if (!importsData.length) {
+  if (!importsData?.length) {
     return (
       <div className="bg-card rounded-lg border border-border p-6">
         {currentLanguage === "es" ? "No hay importaciones." : "No imports."}
@@ -82,7 +45,7 @@ const ImportTable = ({ currentLanguage, importsData = [], loading, onRowClick })
         <tbody className="divide-y divide-border">
           {importsData.map((imp) => (
             <tr
-              key={imp.ociNumber}
+              key={imp.ociNumber || imp.id}
               className="text-sm text-foreground hover:bg-muted/40 cursor-pointer"
               onClick={() => onRowClick && onRowClick(imp)}
               title={currentLanguage === "es" ? "Ver ítems" : "View items"}
@@ -91,9 +54,9 @@ const ImportTable = ({ currentLanguage, importsData = [], loading, onRowClick })
               <td className="px-4 py-3">{imp.poNumber || "-"}</td>
               <td className="px-4 py-3">{imp.blAwb || "-"}</td>
               <td className="px-4 py-3">{imp.vessel || "-"}</td>
-              <td className="px-4 py-3">{fmtDate(imp.eta)}</td>
-              <td className="px-4 py-3">{fmtDate(imp.atd)}</td>
-              <td className="px-4 py-3">{fmtDate(imp.ata)}</td>
+              <td className="px-4 py-3">{d(imp.eta)}</td>
+              <td className="px-4 py-3">{d(imp.atd)}</td>
+              <td className="px-4 py-3">{d(imp.ata)}</td>
               <td className="px-4 py-3">{imp.customsBroker || "-"}</td>
               <td className="px-4 py-3">{imp.warehouse || "-"}</td>
               <td className="px-4 py-3">
@@ -101,7 +64,7 @@ const ImportTable = ({ currentLanguage, importsData = [], loading, onRowClick })
                   {imp.status || (currentLanguage === "es" ? "Abierto" : "Open")}
                 </span>
               </td>
-              <td className="px-4 py-3">{fmtInt(imp.totalReceived)}</td>
+              <td className="px-4 py-3">{i(imp.totalReceived)}</td>
               <td className="px-4 py-3">
                 {imp.qaRequired ? (
                   <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-xs">

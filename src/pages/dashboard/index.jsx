@@ -4,6 +4,8 @@ import Breadcrumb from "../../components/ui/Breadcrumb";
 import Icon from "../../components/AppIcon";
 import { fetchGoogleSheet } from "../../lib/googleSheet";
 import { SHEET_ID } from "../../lib/sheetsConfig";
+// 👇 Helpers de formato (ruta relativa + .js)
+import { fmtInt, fmtDate, toDate } from "../../utils/format.js";
 
 const Card = ({ color, icon, label, value }) => (
   <div className="bg-card rounded-lg border border-border p-6 shadow-soft">
@@ -68,19 +70,15 @@ const Dashboard = () => {
         const pos = (purchaseOrders || []).length;
         const imps = (imports || []).length;
 
-        // demanda del próximo mes (si tus meses vienen como '2025-09' o '2025-09-01', se toma AAAA-MM)
+        // Demanda del próximo mes
         const now = new Date();
-        const y = now.getFullYear();
-        const m = now.getMonth(); // 0-11
-        const next = new Date(y, m + 1, 1);
+        const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
         const yyyyMm = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
         const nextMonthDemand = (demand || [])
-          .filter((d) =>
-            String(d?.month_of_supply || "").startsWith(yyyyMm)
-          )
+          .filter((d) => String(d?.month_of_supply || "").startsWith(yyyyMm))
           .reduce((s, d) => s + (Number(d?.qty_requested) || 0), 0);
 
-        // Hitos próximos (tomas ETA de imports y last/first_delivery_date de tender_items)
+        // Hitos próximos (usar toDate para parse robusto)
         const importMilestones = (imports || [])
           .map((imp) => ({
             type: "Import ETA",
@@ -100,7 +98,10 @@ const Dashboard = () => {
           .filter((x) => x.date);
 
         const merged = [...importMilestones, ...tenderMilestones]
-          .map((e) => ({ ...e, ts: new Date(e.date).getTime() }))
+          .map((e) => {
+            const d = toDate(e.date);
+            return { ...e, ts: d ? d.getTime() : NaN };
+          })
           .filter((e) => !isNaN(e.ts))
           .sort((a, b) => a.ts - b.ts)
           .slice(0, 10);
@@ -146,10 +147,30 @@ const Dashboard = () => {
 
           {/* KPIs */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card color="bg-blue-500" icon="FileText" label={t("Tenders", "Licitaciones")} value={kpis.tenders} />
-            <Card color="bg-emerald-500" icon="ShoppingCart" label={t("Purchase Orders", "Órdenes de Compra")} value={kpis.pos} />
-            <Card color="bg-purple-500" icon="Truck" label={t("Imports", "Importaciones")} value={kpis.imports} />
-            <Card color="bg-amber-500" icon="Calendar" label={t("Next Month Demand", "Demanda Próx. Mes")} value={kpis.nextMonthDemand} />
+            <Card
+              color="bg-blue-500"
+              icon="FileText"
+              label={t("Tenders", "Licitaciones")}
+              value={fmtInt(kpis.tenders, lang)}
+            />
+            <Card
+              color="bg-emerald-500"
+              icon="ShoppingCart"
+              label={t("Purchase Orders", "Órdenes de Compra")}
+              value={fmtInt(kpis.pos, lang)}
+            />
+            <Card
+              color="bg-purple-500"
+              icon="Truck"
+              label={t("Imports", "Importaciones")}
+              value={fmtInt(kpis.imports, lang)}
+            />
+            <Card
+              color="bg-amber-500"
+              icon="Calendar"
+              label={t("Next Month Demand", "Demanda Próx. Mes")}
+              value={fmtInt(kpis.nextMonthDemand, lang)}
+            />
           </div>
 
           {/* Próximos hitos */}
@@ -172,11 +193,7 @@ const Dashboard = () => {
                     {upcoming.map((u, i) => (
                       <tr key={i} className="text-sm text-foreground">
                         <td className="px-4 py-3">
-                          {new Intl.DateTimeFormat(lang === "es" ? "es-CL" : "en-US", {
-                            year: "numeric",
-                            month: "2-digit",
-                            day: "2-digit",
-                          }).format(new Date(u.date))}
+                          {fmtDate(u.date, lang)}
                         </td>
                         <td className="px-4 py-3">{u.type}</td>
                         <td className="px-4 py-3">{u.detail}</td>

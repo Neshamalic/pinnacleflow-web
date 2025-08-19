@@ -1,15 +1,52 @@
 import React from "react";
 
 const ImportTable = ({ currentLanguage, importsData = [], loading, onRowClick }) => {
-  const fmtDate = (d) => {
-    if (!d) return "-";
-    const dt = new Date(d);
-    if (isNaN(dt)) return String(d);
-    return new Intl.DateTimeFormat(
-      currentLanguage === "es" ? "es-CL" : "en-US",
-      { year: "numeric", month: "2-digit", day: "2-digit" }
-    ).format(dt);
+  // Formateador de fechas: soporta "Date(yyyy,mm,dd)", "dd/mm/yyyy", ISO, timestamp, etc.
+  const fmtDate = (value) => {
+    if (!value) return "-";
+
+    if (typeof value === "string") {
+      // Date(2024,10,26)
+      const m = value.match(/^Date\((\d{4}),\s*(\d{1,2}),\s*(\d{1,2})\)$/i);
+      if (m) {
+        const y = Number(m[1]);
+        const mo = Number(m[2]); // 1..12
+        const d = Number(m[3]);
+        const dt = new Date(y, mo - 1, d);
+        return new Intl.DateTimeFormat(
+          currentLanguage === "es" ? "es-CL" : "en-US",
+          { year: "numeric", month: "2-digit", day: "2-digit" }
+        ).format(dt);
+      }
+      // dd/mm/yyyy
+      const m2 = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (m2) {
+        const d = Number(m2[1]), mo = Number(m2[2]), y = Number(m2[3]);
+        const dt = new Date(y, mo - 1, d);
+        return new Intl.DateTimeFormat(
+          currentLanguage === "es" ? "es-CL" : "en-US",
+          { year: "numeric", month: "2-digit", day: "2-digit" }
+        ).format(dt);
+      }
+    }
+
+    // ISO, timestamp u otros
+    const dt = new Date(value);
+    if (!isNaN(dt)) {
+      return new Intl.DateTimeFormat(
+        currentLanguage === "es" ? "es-CL" : "en-US",
+        { year: "numeric", month: "2-digit", day: "2-digit" }
+      ).format(dt);
+    }
+
+    return String(value);
   };
+
+  // Separador de miles
+  const fmtInt = (n) =>
+    new Intl.NumberFormat(currentLanguage === "es" ? "es-CL" : "en-US").format(
+      Number(n) || 0
+    );
 
   if (loading) {
     return (
@@ -68,22 +105,4 @@ const ImportTable = ({ currentLanguage, importsData = [], loading, onRowClick })
                   {imp.status || (currentLanguage === "es" ? "Abierto" : "Open")}
                 </span>
               </td>
-              <td className="px-4 py-3">{imp.totalReceived ?? 0}</td>
-              <td className="px-4 py-3">
-                {imp.qaRequired ? (
-                  <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-xs">
-                    QA
-                  </span>
-                ) : (
-                  "-"
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-};
-
-export default ImportTable;
+              <td className="px-4 py-3">{fmtInt(i

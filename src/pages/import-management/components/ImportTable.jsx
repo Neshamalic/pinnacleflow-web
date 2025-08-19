@@ -1,6 +1,6 @@
 import React from "react";
 
-const ImportTable = ({ currentLanguage, importsData = [], loading }) => {
+const ImportTable = ({ currentLanguage, importsData = [], loading, onRowClick }) => {
   const fmtDate = (d) => {
     if (!d) return "-";
     const dt = new Date(d);
@@ -48,7 +48,12 @@ const ImportTable = ({ currentLanguage, importsData = [], loading }) => {
         </thead>
         <tbody className="divide-y divide-border">
           {importsData.map((imp) => (
-            <tr key={imp.ociNumber} className="text-sm text-foreground">
+            <tr
+              key={imp.ociNumber}
+              className="text-sm text-foreground hover:bg-muted/40 cursor-pointer"
+              onClick={() => onRowClick && onRowClick(imp)}
+              title={currentLanguage === "es" ? "Ver ítems" : "View items"}
+            >
               <td className="px-4 py-3 font-medium">{imp.ociNumber || "-"}</td>
               <td className="px-4 py-3">{imp.poNumber || "-"}</td>
               <td className="px-4 py-3">{imp.blAwb || "-"}</td>

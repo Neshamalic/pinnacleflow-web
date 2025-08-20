@@ -1,3 +1,4 @@
+// src/pages/tender-management/index.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -24,7 +25,7 @@ const TenderManagement = () => {
   const [sortConfig, setSortConfig] = useState({ key: 'createdDate', direction: 'desc' });
 
   const [selectedTender, setSelectedTender] = useState(null);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false); // lo dejamos por compatibilidad, aunque ahora navegamos
 
   const [tenders, setTenders] = useState([]);
 
@@ -33,7 +34,7 @@ const TenderManagement = () => {
     setCurrentLanguage(savedLanguage);
   }, []);
 
-  // Cargar licitaciones desde Google Sheets
+  // Carga desde Google Sheets y agrupa por tender_number
   useEffect(() => {
     async function load() {
       try {
@@ -71,8 +72,8 @@ const TenderManagement = () => {
           const isOverdue = deliveryDate ? new Date(deliveryDate) < new Date() : false;
 
           return {
-            id: idx + 1,                 // id interno (numérico)
-            tenderId: g.tenderId,        // id visible (ej. "621-299-LR25")
+            id: idx + 1,               // id interno (numérico) para la tabla
+            tenderId: g.tenderId,      // ej: "621-299-LR25" -> lo usamos en la URL
             title: g.tenderId,
             status: 'awarded',
             productsCount,
@@ -84,7 +85,6 @@ const TenderManagement = () => {
             createdDate,
             isOverdue,
             completionPercentage: 0,
-            // campos para futuras expansiones
             tags: [],
             description: '',
             products: [],
@@ -105,57 +105,68 @@ const TenderManagement = () => {
     load();
   }, []);
 
-  // --- Filtros / Orden ---
+  // Filtros
   const handleFiltersChange = (newFilters) => setFilters(newFilters);
 
-  const handleTenderSelect = (tenderInternalId) => {
+  // Selección
+  const handleTenderSelect = (rowId) => {
     setSelectedTenders((prev) =>
-      prev?.includes(tenderInternalId)
-        ? prev?.filter((id) => id !== tenderInternalId)
-        : [...prev, tenderInternalId]
+      prev.includes(rowId) ? prev.filter((id) => id !== rowId) : [...prev, rowId]
     );
   };
 
   const handleTenderSelectAll = () => {
     setSelectedTenders(
-      selectedTenders?.length === tenders?.length ? [] : tenders?.map((t) => t?.id)
+      selectedTenders.length === tenders.length ? [] : tenders.map((t) => t.id)
     );
   };
 
+  // Orden
   const handleSort = (key) => {
     setSortConfig((prev) => ({
       key,
-      direction: prev?.key === key && prev?.direction === 'asc' ? 'desc' : 'asc',
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
     }));
   };
 
-  // --- Acciones fila / toolbar ---
-  const handleTenderView = (tenderInternalId) => {
-    const tender = tenders?.find((t) => t?.id === tenderInternalId);
-    setSelectedTender(tender || null);
-    setIsDetailModalOpen(true);
+  // >>> NAVEGACIÓN <<<
+  const goToDetail = (rowId) => {
+    const t = tenders.find((x) => x.id === rowId);
+    if (!t) return;
+    navigate(`/tender-management/${encodeURIComponent(t.tenderId)}`);
   };
 
-  const handleTenderEdit = (tenderIdOrInternal) => {
-    // Acepta tanto el id interno (numérico) como el tenderId string
-    const found =
-      tenders.find((t) => t.id === tenderIdOrInternal) ||
-      tenders.find((t) => t.tenderId === tenderIdOrInternal);
-
-    const tenderKey = found ? found.tenderId : tenderIdOrInternal;
-    navigate(`/tenders/${encodeURIComponent(tenderKey)}/edit`);
+  const goToEdit = (rowId) => {
+    const t = tenders.find((x) => x.id === rowId);
+    if (!t) return;
+    navigate(`/tender-management/${encodeURIComponent(t.tenderId)}/edit`);
   };
 
-  const handleNewTender = () => {
-    navigate('/tenders/new');
+  const goToNew = () => {
+    navigate('/tender-management/new');
   };
 
-  const filteredAndSortedTenders = tenders
-    ?.filter((tender) => {
+  // (dejamos estas funciones por si alguna vista interna las llama)
+  const handleTenderView = goToDetail;
+  const handleTenderEdit = goToEdit;
+  const handleNewTender = goToNew;
+
+  const handleExport = (format) => {
+    // Aquí podrías generar CSV/XLSX; por ahora sólo deja el console si quieres
+    console.log('Export to:', format);
+  };
+
+  const handleBulkAction = (action) => {
+    console.log('Bulk action:', action, 'on tenders:', selectedTenders);
+  };
+
+  // Aplicar filtros + orden
+  const filteredAndSortedTenders = (tenders || [])
+    .filter((tender) => {
       if (
         filters?.search &&
-        !tender?.title?.toLowerCase()?.includes(String(filters?.search).toLowerCase()) &&
-        !tender?.tenderId?.toLowerCase()?.includes(String(filters?.search).toLowerCase())
+        !tender?.title?.toLowerCase()?.includes(String(filters.search).toLowerCase()) &&
+        !tender?.tenderId?.toLowerCase()?.includes(String(filters.search).toLowerCase())
       ) {
         return false;
       }
@@ -189,64 +200,15 @@ const TenderManagement = () => {
       }
       return true;
     })
-    ?.sort((a, b) => {
-      const aValue = a?.[sortConfig?.key];
-      const bValue = b?.[sortConfig?.key];
-      if (sortConfig?.direction === 'asc') {
+    .sort((a, b) => {
+      const aValue = a?.[sortConfig.key];
+      const bValue = b?.[sortConfig.key];
+      if (sortConfig.direction === 'asc') {
         return aValue > bValue ? 1 : -1;
       } else {
         return aValue < bValue ? 1 : -1;
       }
     });
-
-  // Exportar lo visible (o lo seleccionado si hay selección)
-  const handleExport = (format = 'csv') => {
-    const list =
-      selectedTenders.length > 0
-        ? filteredAndSortedTenders.filter((t) => selectedTenders.includes(t.id))
-        : filteredAndSortedTenders;
-
-    if (!list || list.length === 0) return;
-
-    const headers = [
-      'Tender ID',
-      'Title',
-      'Status',
-      'Products',
-      'Delivery Date',
-      'Stock Coverage (days)',
-      'Total Value',
-      'Currency',
-    ];
-
-    const rows = list.map((t) => [
-      t.tenderId || '',
-      t.title || '',
-      t.status || '',
-      String(t.productsCount ?? ''),
-      t.deliveryDate || '',
-      String(t.stockCoverage ?? ''),
-      String(t.totalValue ?? ''),
-      t.currency || '',
-    ]);
-
-    const csv = [headers, ...rows]
-      .map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `tenders_${Date.now()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleBulkAction = (action) => {
-    // Placeholder para futuras acciones masivas
-    console.log('Bulk action:', action, 'on:', selectedTenders);
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -276,8 +238,8 @@ const TenderManagement = () => {
             </div>
 
             <TenderToolbar
-              selectedCount={selectedTenders?.length}
-              totalCount={filteredAndSortedTenders?.length}
+              selectedCount={selectedTenders.length}
+              totalCount={filteredAndSortedTenders.length}
               viewMode={viewMode}
               onViewModeChange={setViewMode}
               onNewTender={handleNewTender}
@@ -292,8 +254,8 @@ const TenderManagement = () => {
                 selectedTenders={selectedTenders}
                 onTenderSelect={handleTenderSelect}
                 onTenderSelectAll={handleTenderSelectAll}
-                onTenderView={handleTenderView}
-                onTenderEdit={handleTenderEdit}
+                onTenderView={handleTenderView}   // <- ahora navega
+                onTenderEdit={handleTenderEdit}   // <- ahora navega
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />
@@ -303,22 +265,24 @@ const TenderManagement = () => {
                 tenders={filteredAndSortedTenders}
                 selectedTenders={selectedTenders}
                 onTenderSelect={handleTenderSelect}
-                onTenderView={handleTenderView}
-                onTenderEdit={handleTenderEdit}
+                onTenderView={handleTenderView}   // <- ahora navega
+                onTenderEdit={handleTenderEdit}   // <- ahora navega
               />
             )}
           </div>
         </div>
       </div>
 
+      {/* El modal puede quedar sin uso, lo conservamos por compatibilidad */}
       <TenderDetailModal
         tender={selectedTender}
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
-        onEdit={() => handleTenderEdit(selectedTender?.tenderId || selectedTender?.id)}
+        onEdit={(id) => handleTenderEdit(id)}
       />
     </div>
   );
 };
 
 export default TenderManagement;
+

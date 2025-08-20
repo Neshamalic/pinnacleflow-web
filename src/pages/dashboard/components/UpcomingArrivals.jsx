@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
+import Icon from '../../../components/AppIcon.jsx';
+import Button from '../../../components/ui/Button.jsx';
 
 const UpcomingArrivals = () => {
   const [currentLanguage, setCurrentLanguage] = useState('en');
@@ -55,12 +55,12 @@ const UpcomingArrivals = () => {
         label: currentLanguage === 'es' ? 'En Tránsito' : 'In Transit',
         icon: 'Truck'
       },
-      'customs': {
+      customs: {
         color: 'bg-yellow-100 text-yellow-800',
         label: currentLanguage === 'es' ? 'En Aduana' : 'At Customs',
         icon: 'Clock'
       },
-      'scheduled': {
+      scheduled: {
         color: 'bg-gray-100 text-gray-800',
         label: currentLanguage === 'es' ? 'Programado' : 'Scheduled',
         icon: 'Calendar'
@@ -85,19 +85,40 @@ const UpcomingArrivals = () => {
     return <div className={`w-2 h-2 rounded-full ${colors?.[priority] || colors?.low}`} />;
   };
 
+  // Parser de fecha un poco más tolerante
+  const parseDate = (value) => {
+    if (!value) return null;
+    const s = String(value).trim();
+
+    // Soporta "YYYY-MM-DD" o "YYYY/MM/DD"
+    const m = s.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
+    if (m) {
+      const y = Number(m[1]);
+      const mo = Number(m[2]);
+      const d = Number(m[3]);
+      return new Date(y, mo - 1, d);
+    }
+
+    const dt = new Date(s);
+    return isNaN(dt) ? null : dt;
+  };
+
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date?.toLocaleDateString(currentLanguage === 'es' ? 'es-CL' : 'en-US', {
+    const date = parseDate(dateString);
+    if (!date) return '-';
+    return date.toLocaleDateString(currentLanguage === 'es' ? 'es-CL' : 'en-US', {
       month: 'short',
       day: 'numeric'
     });
   };
 
   const formatProducts = (products, packagingUnits) => {
-    return products?.map((product, index) => {
-      const units = packagingUnits?.[index];
-      return `${product} (${units} ${currentLanguage === 'es' ? 'unidades' : 'units'})`;
-    })?.join(', ');
+    return products
+      ?.map((product, index) => {
+        const units = packagingUnits?.[index];
+        return `${product} (${units ?? '-'} ${currentLanguage === 'es' ? 'unidades' : 'units'})`;
+      })
+      ?.join(', ');
   };
 
   return (
@@ -127,10 +148,8 @@ const UpcomingArrivals = () => {
             className="flex items-center space-x-4 p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer"
             onClick={() => navigate('/import-management')}
           >
-            <div className="flex-shrink-0">
-              {getPriorityIndicator(arrival?.priority)}
-            </div>
-            
+            <div className="flex-shrink-0">{getPriorityIndicator(arrival?.priority)}</div>
+
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-sm font-medium text-foreground truncate">
@@ -144,9 +163,7 @@ const UpcomingArrivals = () => {
                 {formatProducts(arrival?.products, arrival?.packagingUnits)}
               </p>
               <div className="flex items-center justify-between mt-2">
-                <span className="text-xs text-muted-foreground">
-                  {arrival?.port}
-                </span>
+                <span className="text-xs text-muted-foreground">{arrival?.port}</span>
                 {getStatusBadge(arrival?.status)}
               </div>
             </div>
@@ -158,8 +175,7 @@ const UpcomingArrivals = () => {
         <div className="text-center py-8">
           <Icon name="Ship" size={48} className="mx-auto text-muted-foreground mb-3" />
           <p className="text-sm text-muted-foreground">
-            {currentLanguage === 'es' ?'No hay llegadas programadas' :'No scheduled arrivals'
-            }
+            {currentLanguage === 'es' ? 'No hay llegadas programadas' : 'No scheduled arrivals'}
           </p>
         </div>
       )}

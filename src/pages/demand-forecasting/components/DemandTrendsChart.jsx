@@ -194,3 +194,4 @@ const DemandTrendsChart = ({ currentLanguage }) => {
 };
 
 export default DemandTrendsChart;
+

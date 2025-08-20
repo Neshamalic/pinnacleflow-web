@@ -1,7 +1,7 @@
 import React from 'react';
-import Icon from '../../../components/AppIcon.jsx'; // 👈 importa con extensión
+import Icon from '../../../components/AppIcon';
 
-const MetricsCard = ({ title, value, subtitle, icon, trend, color = 'blue', onClick }) => {
+const KpiCard = ({ title, value, subtitle, icon, trend, color = 'blue', onClick }) => {
   const getColorClasses = () => {
     switch (color) {
       case 'green':
@@ -70,4 +70,4 @@ const MetricsCard = ({ title, value, subtitle, icon, trend, color = 'blue', onCl
   );
 };
 
-export default MetricsCard;
+export default KpiCard;

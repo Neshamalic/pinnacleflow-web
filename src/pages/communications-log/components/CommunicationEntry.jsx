@@ -1,20 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
+import React, { useState } from 'react';
+import Icon from '../../../components/AppIcon.jsx';
+import Button from '../../../components/ui/Button.jsx';
+import { fmtDate } from '../../../utils/format.js';
 
 const CommunicationEntry = ({ communication, currentLanguage, onView, onReply }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date?.toLocaleDateString(currentLanguage === 'es' ? 'es-CL' : 'en-US', {
+  const formatDate = (dateString) =>
+    fmtDate(dateString, currentLanguage, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
-  };
 
   const getTypeIcon = (type) => {
     const icons = {
@@ -22,7 +21,7 @@ const CommunicationEntry = ({ communication, currentLanguage, onView, onReply })
       whatsapp: 'MessageCircle',
       phone: 'Phone',
       meeting: 'Users',
-      system: 'Bell'
+      system: 'Bell',
     };
     return icons?.[type] || 'MessageSquare';
   };
@@ -33,7 +32,7 @@ const CommunicationEntry = ({ communication, currentLanguage, onView, onReply })
       whatsapp: 'text-green-600',
       phone: 'text-purple-600',
       meeting: 'text-orange-600',
-      system: 'text-gray-600'
+      system: 'text-gray-600',
     };
     return colors?.[type] || 'text-gray-600';
   };
@@ -42,20 +41,20 @@ const CommunicationEntry = ({ communication, currentLanguage, onView, onReply })
     const statusConfig = {
       read: {
         color: 'bg-green-100 text-green-800',
-        label: currentLanguage === 'es' ? 'Leído' : 'Read'
+        label: currentLanguage === 'es' ? 'Leído' : 'Read',
       },
       unread: {
         color: 'bg-blue-100 text-blue-800',
-        label: currentLanguage === 'es' ? 'No Leído' : 'Unread'
+        label: currentLanguage === 'es' ? 'No Leído' : 'Unread',
       },
       replied: {
         color: 'bg-purple-100 text-purple-800',
-        label: currentLanguage === 'es' ? 'Respondido' : 'Replied'
+        label: currentLanguage === 'es' ? 'Respondido' : 'Replied',
       },
       pending: {
         color: 'bg-yellow-100 text-yellow-800',
-        label: currentLanguage === 'es' ? 'Pendiente' : 'Pending'
-      }
+        label: currentLanguage === 'es' ? 'Pendiente' : 'Pending',
+      },
     };
 
     const config = statusConfig?.[status] || statusConfig?.unread;
@@ -94,9 +93,11 @@ const CommunicationEntry = ({ communication, currentLanguage, onView, onReply })
   };
 
   return (
-    <div className={`bg-card border rounded-lg p-4 hover:shadow-md transition-all duration-200 ${
-      communication?.status === 'unread' ? 'border-primary/30 bg-primary/5' : 'border-border'
-    }`}>
+    <div
+      className={`bg-card border rounded-lg p-4 hover:shadow-md transition-all duration-200 ${
+        communication?.status === 'unread' ? 'border-primary/30 bg-primary/5' : 'border-border'
+      }`}
+    >
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-start space-x-3">
@@ -105,9 +106,7 @@ const CommunicationEntry = ({ communication, currentLanguage, onView, onReply })
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2 mb-1">
-              <h4 className="font-medium text-foreground truncate">
-                {communication?.subject}
-              </h4>
+              <h4 className="font-medium text-foreground truncate">{communication?.subject}</h4>
               {getStatusBadge(communication?.status)}
             </div>
             <div className="flex items-center space-x-4 text-sm text-muted-foreground">
@@ -138,16 +137,14 @@ const CommunicationEntry = ({ communication, currentLanguage, onView, onReply })
             onClick={() => setIsExpanded(!isExpanded)}
             className="h-8 w-8"
           >
-            <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={16} />
+            <Icon name={isExpanded ? 'ChevronUp' : 'ChevronDown'} size={16} />
           </Button>
         </div>
       </div>
 
       {/* Preview */}
       <div className="mb-3">
-        <p className="text-sm text-foreground line-clamp-2">
-          {communication?.preview}
-        </p>
+        <p className="text-sm text-foreground line-clamp-2">{communication?.preview}</p>
         {renderProductInfo(communication?.products)}
       </div>
 
@@ -156,9 +153,7 @@ const CommunicationEntry = ({ communication, currentLanguage, onView, onReply })
         <div className="border-t border-border pt-3 mt-3">
           <div className="space-y-3">
             <div>
-              <p className="text-sm text-foreground whitespace-pre-wrap">
-                {communication?.content}
-              </p>
+              <p className="text-sm text-foreground whitespace-pre-wrap">{communication?.content}</p>
             </div>
 
             {/* Attachments */}
@@ -204,12 +199,7 @@ const CommunicationEntry = ({ communication, currentLanguage, onView, onReply })
               >
                 {currentLanguage === 'es' ? 'Responder' : 'Reply'}
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                iconName="Forward"
-                iconPosition="left"
-              >
+              <Button variant="ghost" size="sm" iconName="Forward" iconPosition="left">
                 {currentLanguage === 'es' ? 'Reenviar' : 'Forward'}
               </Button>
             </div>

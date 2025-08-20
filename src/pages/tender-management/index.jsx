@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+
 import Header from '../../components/ui/Header';
 import Breadcrumb from '../../components/ui/Breadcrumb';
+
 import TenderFilters from './components/TenderFilters';
 import TenderToolbar from './components/TenderToolbar';
 import TenderTable from './components/TenderTable';
@@ -11,12 +14,15 @@ import { fetchGoogleSheet } from '../../lib/googleSheet';
 import { SHEET_ID } from '../../lib/sheetsConfig';
 
 const TenderManagement = () => {
+  const navigate = useNavigate();
+
   const [currentLanguage, setCurrentLanguage] = useState('en');
   const [isFiltersCollapsed, setIsFiltersCollapsed] = useState(false);
   const [viewMode, setViewMode] = useState('table');
   const [selectedTenders, setSelectedTenders] = useState([]);
   const [filters, setFilters] = useState({});
   const [sortConfig, setSortConfig] = useState({ key: 'createdDate', direction: 'desc' });
+
   const [selectedTender, setSelectedTender] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
@@ -27,6 +33,7 @@ const TenderManagement = () => {
     setCurrentLanguage(savedLanguage);
   }, []);
 
+  // Cargar licitaciones desde Google Sheets
   useEffect(() => {
     async function load() {
       try {
@@ -36,7 +43,7 @@ const TenderManagement = () => {
         });
 
         const groups = {};
-        rows.forEach((r) => {
+        (rows || []).forEach((r) => {
           const tn = r?.tender_number;
           if (!tn) return;
           if (!groups[tn]) groups[tn] = { tenderId: tn, items: [], currency: r?.currency || 'CLP' };
@@ -64,8 +71,8 @@ const TenderManagement = () => {
           const isOverdue = deliveryDate ? new Date(deliveryDate) < new Date() : false;
 
           return {
-            id: idx + 1,
-            tenderId: g.tenderId,
+            id: idx + 1,                 // id interno (numérico)
+            tenderId: g.tenderId,        // id visible (ej. "621-299-LR25")
             title: g.tenderId,
             status: 'awarded',
             productsCount,
@@ -77,6 +84,7 @@ const TenderManagement = () => {
             createdDate,
             isOverdue,
             completionPercentage: 0,
+            // campos para futuras expansiones
             tags: [],
             description: '',
             products: [],
@@ -97,11 +105,14 @@ const TenderManagement = () => {
     load();
   }, []);
 
+  // --- Filtros / Orden ---
   const handleFiltersChange = (newFilters) => setFilters(newFilters);
 
-  const handleTenderSelect = (tenderId) => {
+  const handleTenderSelect = (tenderInternalId) => {
     setSelectedTenders((prev) =>
-      prev?.includes(tenderId) ? prev?.filter((id) => id !== tenderId) : [...prev, tenderId]
+      prev?.includes(tenderInternalId)
+        ? prev?.filter((id) => id !== tenderInternalId)
+        : [...prev, tenderInternalId]
     );
   };
 
@@ -118,34 +129,33 @@ const TenderManagement = () => {
     }));
   };
 
-  const handleTenderView = (tenderId) => {
-    const tender = tenders?.find((t) => t?.id === tenderId);
-    setSelectedTender(tender);
+  // --- Acciones fila / toolbar ---
+  const handleTenderView = (tenderInternalId) => {
+    const tender = tenders?.find((t) => t?.id === tenderInternalId);
+    setSelectedTender(tender || null);
     setIsDetailModalOpen(true);
   };
 
-  const handleTenderEdit = (tenderId) => {
-    console.log('Edit tender:', tenderId);
+  const handleTenderEdit = (tenderIdOrInternal) => {
+    // Acepta tanto el id interno (numérico) como el tenderId string
+    const found =
+      tenders.find((t) => t.id === tenderIdOrInternal) ||
+      tenders.find((t) => t.tenderId === tenderIdOrInternal);
+
+    const tenderKey = found ? found.tenderId : tenderIdOrInternal;
+    navigate(`/tenders/${encodeURIComponent(tenderKey)}/edit`);
   };
 
   const handleNewTender = () => {
-    console.log('Create new tender');
-  };
-
-  const handleExport = (format) => {
-    console.log('Export to:', format);
-  };
-
-  const handleBulkAction = (action) => {
-    console.log('Bulk action:', action, 'on tenders:', selectedTenders);
+    navigate('/tenders/new');
   };
 
   const filteredAndSortedTenders = tenders
     ?.filter((tender) => {
       if (
         filters?.search &&
-        !tender?.title?.toLowerCase()?.includes(filters?.search?.toLowerCase()) &&
-        !tender?.tenderId?.toLowerCase()?.includes(filters?.search?.toLowerCase())
+        !tender?.title?.toLowerCase()?.includes(String(filters?.search).toLowerCase()) &&
+        !tender?.tenderId?.toLowerCase()?.includes(String(filters?.search).toLowerCase())
       ) {
         return false;
       }
@@ -153,7 +163,7 @@ const TenderManagement = () => {
 
       if (filters?.packagingUnits) {
         const hasMatchingPackagingUnits = tender?.products?.some(
-          (product) => product?.packagingUnits?.toString() === filters?.packagingUnits
+          (product) => String(product?.packagingUnits) === String(filters?.packagingUnits)
         );
         if (!hasMatchingPackagingUnits) return false;
       }
@@ -188,6 +198,55 @@ const TenderManagement = () => {
         return aValue < bValue ? 1 : -1;
       }
     });
+
+  // Exportar lo visible (o lo seleccionado si hay selección)
+  const handleExport = (format = 'csv') => {
+    const list =
+      selectedTenders.length > 0
+        ? filteredAndSortedTenders.filter((t) => selectedTenders.includes(t.id))
+        : filteredAndSortedTenders;
+
+    if (!list || list.length === 0) return;
+
+    const headers = [
+      'Tender ID',
+      'Title',
+      'Status',
+      'Products',
+      'Delivery Date',
+      'Stock Coverage (days)',
+      'Total Value',
+      'Currency',
+    ];
+
+    const rows = list.map((t) => [
+      t.tenderId || '',
+      t.title || '',
+      t.status || '',
+      String(t.productsCount ?? ''),
+      t.deliveryDate || '',
+      String(t.stockCoverage ?? ''),
+      String(t.totalValue ?? ''),
+      t.currency || '',
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tenders_${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleBulkAction = (action) => {
+    // Placeholder para futuras acciones masivas
+    console.log('Bulk action:', action, 'on:', selectedTenders);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -256,7 +315,7 @@ const TenderManagement = () => {
         tender={selectedTender}
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
-        onEdit={handleTenderEdit}
+        onEdit={() => handleTenderEdit(selectedTender?.tenderId || selectedTender?.id)}
       />
     </div>
   );

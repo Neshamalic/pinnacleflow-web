@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Icon from '../../../components/AppIcon';
+import Icon from '../../../components/AppIcon.jsx';
 
 const RecentCommunications = () => {
   const [currentLanguage, setCurrentLanguage] = useState('en');
@@ -93,17 +93,31 @@ const RecentCommunications = () => {
     }
   };
 
+  // Parser robusto para 'YYYY-MM-DD HH:mm' y similares
+  const parseDate = (ts) => {
+    if (!ts) return null;
+    const isoish = ts.includes(' ') ? ts.replace(' ', 'T') : ts;
+    const d = new Date(isoish);
+    if (!isNaN(d)) return d;
+
+    const m = ts.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})$/);
+    if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]));
+    return null;
+  };
+
   const formatTimestamp = (timestamp) => {
-    const date = new Date(timestamp);
+    const date = parseDate(timestamp);
+    if (!date) return currentLanguage === 'es' ? 'Fecha inválida' : 'Invalid date';
+
     const now = new Date();
     const diffHours = Math.floor((now - date) / (1000 * 60 * 60));
-    
+
     if (diffHours < 1) {
       return currentLanguage === 'es' ? 'Hace unos minutos' : 'A few minutes ago';
     } else if (diffHours < 24) {
       return currentLanguage === 'es' ? `Hace ${diffHours}h` : `${diffHours}h ago`;
     } else {
-      return date?.toLocaleDateString(currentLanguage === 'es' ? 'es-CL' : 'en-US');
+      return date.toLocaleDateString(currentLanguage === 'es' ? 'es-CL' : 'en-US');
     }
   };
 
@@ -122,7 +136,7 @@ const RecentCommunications = () => {
               <div className={`p-2 rounded-lg ${getPriorityColor(comm?.priority)}`}>
                 <Icon name={getTypeIcon(comm?.type)} size={16} />
               </div>
-              
+
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between mb-2">
                   <h4 className="font-medium text-slate-900 text-sm leading-tight pr-2">
@@ -132,7 +146,7 @@ const RecentCommunications = () => {
                     <Icon name="Paperclip" size={14} className="text-slate-400 flex-shrink-0" />
                   )}
                 </div>
-                
+
                 <div className="flex items-center justify-between text-xs text-slate-500">
                   <div>
                     <span className="font-medium">{comm?.sender}</span>
@@ -141,7 +155,7 @@ const RecentCommunications = () => {
                   </div>
                   <span>{formatTimestamp(comm?.timestamp)}</span>
                 </div>
-                
+
                 <div className="mt-2 flex items-center justify-between">
                   <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
                     {comm?.relatedTo}

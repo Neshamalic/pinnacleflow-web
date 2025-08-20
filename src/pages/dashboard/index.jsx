@@ -6,7 +6,7 @@ import { fetchGoogleSheet } from "../../lib/googleSheet";
 import { SHEET_ID } from "../../lib/sheetsConfig";
 
 import { fmtInt, fmtDate, toDate } from "../../utils/format.js";
-import KpiCard from "./components/KpiCard"; // 👈 NUEVO: usamos KpiCard
+import KpiCard from "./components/KpiCard"; 
 
 const Section = ({ title, children }) => (
   <div className="mb-8">

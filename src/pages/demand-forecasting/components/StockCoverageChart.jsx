@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
+import {
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid
+} from 'recharts';
+import Icon from '../../../components/AppIcon.jsx';
+import Button from '../../../components/ui/Button.jsx';
 
 const StockCoverageChart = ({ currentLanguage }) => {
   const [viewType, setViewType] = useState('pie');
@@ -17,13 +20,21 @@ const StockCoverageChart = ({ currentLanguage }) => {
       category: currentLanguage === 'es' ? 'Bajo (2-5 días)' : 'Low (2-5 days)',
       value: 7,
       color: '#f59e0b',
-      products: ['Amoxicillin 250mg', 'Atorvastatin 20mg', 'Lisinopril 10mg', 'Metoprolol 50mg', 'Simvastatin 40mg', 'Amlodipine 5mg', 'Hydrochlorothiazide 25mg']
+      products: [
+        'Amoxicillin 250mg', 'Atorvastatin 20mg', 'Lisinopril 10mg',
+        'Metoprolol 50mg', 'Simvastatin 40mg', 'Amlodipine 5mg',
+        'Hydrochlorothiazide 25mg'
+      ]
     },
     {
       category: currentLanguage === 'es' ? 'Medio (5-10 días)' : 'Medium (5-10 days)',
       value: 9,
       color: '#3b82f6',
-      products: ['Paracetamol 500mg', 'Ibuprofen 400mg', 'Omeprazole 20mg', 'Losartan 50mg', 'Aspirin 100mg', 'Diclofenac 50mg', 'Cetirizine 10mg', 'Ranitidine 150mg', 'Furosemide 40mg']
+      products: [
+        'Paracetamol 500mg', 'Ibuprofen 400mg', 'Omeprazole 20mg',
+        'Losartan 50mg', 'Aspirin 100mg', 'Diclofenac 50mg',
+        'Cetirizine 10mg', 'Ranitidine 150mg', 'Furosemide 40mg'
+      ]
     },
     {
       category: currentLanguage === 'es' ? 'Alto (>10 días)' : 'High (>10 days)',
@@ -78,10 +89,9 @@ const StockCoverageChart = ({ currentLanguage }) => {
         <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-lg max-w-xs">
           <p className="font-medium text-gray-900 mb-2">{data?.category || label}</p>
           <p className="text-sm text-gray-600">
-            {viewType === 'pie' 
+            {viewType === 'pie'
               ? `${data?.value} ${currentLanguage === 'es' ? 'productos' : 'products'}`
-              : `${data?.coverage} ${t?.days}`
-            }
+              : `${data?.coverage} ${t?.days}`}
           </p>
           {data?.products && (
             <div className="mt-2">
@@ -124,7 +134,7 @@ const StockCoverageChart = ({ currentLanguage }) => {
             <Icon name="PieChart" size={20} className="mr-2 text-blue-600" />
             {t?.title}
           </h3>
-          
+
           <div className="flex items-center space-x-2">
             <Button
               variant={viewType === 'pie' ? 'default' : 'outline'}
@@ -147,6 +157,7 @@ const StockCoverageChart = ({ currentLanguage }) => {
           </div>
         </div>
       </div>
+
       <div className="p-6">
         {/* Summary Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -178,44 +189,41 @@ const StockCoverageChart = ({ currentLanguage }) => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ category, value, percent }) => 
-                    `${value} (${(percent * 100)?.toFixed(0)}%)`
-                  }
+                  label={({ value, percent }) => `${value} (${(percent * 100).toFixed(0)}%)`}
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {stockCoverageData?.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry?.color} />
+                  {stockCoverageData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
               </PieChart>
             ) : (
-              <BarChart data={productCoverageData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <BarChart
+                data={productCoverageData}
+                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis 
-                  dataKey="product" 
+                <XAxis
+                  dataKey="product"
                   stroke="#6b7280"
                   fontSize={12}
                   angle={-45}
                   textAnchor="end"
                   height={80}
                 />
-                <YAxis 
+                <YAxis
                   stroke="#6b7280"
                   fontSize={12}
                   label={{ value: t?.days, angle: -90, position: 'insideLeft' }}
                 />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar 
-                  dataKey="coverage" 
-                  radius={[2, 2, 0, 0]}
-                  fill={(entry) => getBarColor(entry?.status)}
-                >
-                  {productCoverageData?.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={getBarColor(entry?.status)} />
+                <Bar dataKey="coverage" radius={[2, 2, 0, 0]} fill="#6b7280">
+                  {productCoverageData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={getBarColor(entry.status)} />
                   ))}
                 </Bar>
               </BarChart>
@@ -226,13 +234,10 @@ const StockCoverageChart = ({ currentLanguage }) => {
         {/* Legend for Pie Chart */}
         {viewType === 'pie' && (
           <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-            {stockCoverageData?.map((item, index) => (
+            {stockCoverageData.map((item, index) => (
               <div key={index} className="flex items-center space-x-2">
-                <div 
-                  className="w-4 h-4 rounded"
-                  style={{ backgroundColor: item?.color }}
-                ></div>
-                <span className="text-sm text-gray-700">{item?.category}</span>
+                <div className="w-4 h-4 rounded" style={{ backgroundColor: item.color }} />
+                <span className="text-sm text-gray-700">{item.category}</span>
               </div>
             ))}
           </div>

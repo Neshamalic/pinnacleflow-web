@@ -6,20 +6,7 @@ import { fetchGoogleSheet } from "../../lib/googleSheet";
 import { SHEET_ID } from "../../lib/sheetsConfig";
 
 import { fmtInt, fmtDate, toDate } from "../../utils/format.js";
-
-const Card = ({ color, icon, label, value }) => (
-  <div className="bg-card rounded-lg border border-border p-6 shadow-soft">
-    <div className="flex items-center justify-between mb-3">
-      <div className={`${color} rounded-lg p-3`}>
-        <Icon name={icon} size={24} color="white" />
-      </div>
-    </div>
-    <div className="space-y-1">
-      <p className="text-2xl font-bold text-foreground">{value}</p>
-      <p className="text-sm text-muted-foreground">{label}</p>
-    </div>
-  </div>
-);
+import KpiCard from "./components/KpiCard"; // 👈 NUEVO: usamos KpiCard
 
 const Section = ({ title, children }) => (
   <div className="mb-8">
@@ -147,28 +134,28 @@ const Dashboard = () => {
 
           {/* KPIs */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card
-              color="bg-blue-500"
+            <KpiCard
+              color="blue"
               icon="FileText"
-              label={t("Tenders", "Licitaciones")}
+              title={t("Tenders", "Licitaciones")}
               value={fmtInt(kpis.tenders, lang)}
             />
-            <Card
-              color="bg-emerald-500"
+            <KpiCard
+              color="green"
               icon="ShoppingCart"
-              label={t("Purchase Orders", "Órdenes de Compra")}
+              title={t("Purchase Orders", "Órdenes de Compra")}
               value={fmtInt(kpis.pos, lang)}
             />
-            <Card
-              color="bg-purple-500"
+            <KpiCard
+              color="blue" // antes era morado; KpiCard no tiene "purple"
               icon="Truck"
-              label={t("Imports", "Importaciones")}
+              title={t("Imports", "Importaciones")}
               value={fmtInt(kpis.imports, lang)}
             />
-            <Card
-              color="bg-amber-500"
+            <KpiCard
+              color="yellow"
               icon="Calendar"
-              label={t("Next Month Demand", "Demanda Próx. Mes")}
+              title={t("Next Month Demand", "Demanda Próx. Mes")}
               value={fmtInt(kpis.nextMonthDemand, lang)}
             />
           </div>

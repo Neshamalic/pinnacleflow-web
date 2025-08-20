@@ -1,3 +1,4 @@
+// src/pages/dashboard/index.jsx
 import React, { useEffect, useState } from "react";
 import Header from "../../components/ui/Header";
 import Breadcrumb from "../../components/ui/Breadcrumb";
@@ -6,7 +7,7 @@ import { fetchGoogleSheet } from "../../lib/googleSheet";
 import { SHEET_ID } from "../../lib/sheetsConfig";
 
 import { fmtInt, fmtDate, toDate } from "../../utils/format.js";
-import KpiCard from "./components/KpiCard"; 
+import KpiCard from "./components/KpiCard";
 
 const Section = ({ title, children }) => (
   <div className="mb-8">
@@ -24,14 +25,19 @@ const Dashboard = () => {
     imports: 0,
     nextMonthDemand: 0,
   });
-  const [upcoming, setUpcoming] = useState([]); // hitos próximos
+  const [upcoming, setUpcoming] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(null);
 
+  // Helper de traducción
+  const t = (en, es) => (lang === "es" ? es : en);
+
+  // Obtener idioma guardado
   useEffect(() => {
     const saved = localStorage.getItem("language") || "en";
     setLang(saved);
   }, []);
 
+  // Cargar datos del Dashboard
   useEffect(() => {
     async function load() {
       try {
@@ -65,10 +71,10 @@ const Dashboard = () => {
           .filter((d) => String(d?.month_of_supply || "").startsWith(yyyyMm))
           .reduce((s, d) => s + (Number(d?.qty_requested) || 0), 0);
 
-        // Hitos próximos (usar toDate para parse robusto)
+        // Hitos próximos
         const importMilestones = (imports || [])
           .map((imp) => ({
-            type: "Import ETA",
+            type: t("Import ETA", "Importación ETA"),
             key: imp?.oci_number,
             date: imp?.eta,
             detail: `${imp?.oci_number} / PO ${imp?.po_number || "-"}`,
@@ -77,7 +83,7 @@ const Dashboard = () => {
 
         const tenderMilestones = (tenderItems || [])
           .map((it) => ({
-            type: "Tender Delivery",
+            type: t("Tender Delivery", "Entrega Licitación"),
             key: it?.tender_number,
             date: it?.last_delivery_date || it?.first_delivery_date,
             detail: `${it?.tender_number} / ${it?.presentation_code || ""}`,
@@ -105,9 +111,7 @@ const Dashboard = () => {
       }
     }
     load();
-  }, []);
-
-  const t = (en, es) => (lang === "es" ? es : en);
+  }, [lang]); // si cambia el idioma, re-evaluamos etiquetas de hitos
 
   const lastUpdatedLabel = lastUpdated
     ? new Intl.DateTimeFormat(lang === "es" ? "es-CL" : "en-US", {
@@ -128,7 +132,8 @@ const Dashboard = () => {
             </h1>
             <div className="text-sm text-muted-foreground flex items-center gap-2">
               <Icon name="Clock" size={16} />
-              {t("Last updated:", "Última actualización:")} {lastUpdatedLabel || t("loading…", "cargando…")}
+              {t("Last updated:", "Última actualización:")}{" "}
+              {lastUpdatedLabel || t("loading…", "cargando…")}
             </div>
           </div>
 
@@ -147,7 +152,7 @@ const Dashboard = () => {
               value={fmtInt(kpis.pos, lang)}
             />
             <KpiCard
-              color="blue" // antes era morado; KpiCard no tiene "purple"
+              color="blue" // KpiCard no tiene "purple"
               icon="Truck"
               title={t("Imports", "Importaciones")}
               value={fmtInt(kpis.imports, lang)}
@@ -165,7 +170,9 @@ const Dashboard = () => {
             {loading ? (
               <div className="text-muted-foreground">{t("Loading…", "Cargando…")}</div>
             ) : upcoming.length === 0 ? (
-              <div className="text-muted-foreground">{t("No upcoming items.", "Sin hitos próximos.")}</div>
+              <div className="text-muted-foreground">
+                {t("No upcoming items.", "Sin hitos próximos.")}
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full text-left">
@@ -179,9 +186,7 @@ const Dashboard = () => {
                   <tbody className="divide-y divide-border">
                     {upcoming.map((u, i) => (
                       <tr key={i} className="text-sm text-foreground">
-                        <td className="px-4 py-3">
-                          {fmtDate(u.date, lang)}
-                        </td>
+                        <td className="px-4 py-3">{fmtDate(u.date, lang)}</td>
                         <td className="px-4 py-3">{u.type}</td>
                         <td className="px-4 py-3">{u.detail}</td>
                       </tr>

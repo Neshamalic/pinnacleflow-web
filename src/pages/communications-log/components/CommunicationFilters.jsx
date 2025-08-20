@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
-import Input from '../../../components/ui/Input';
-import Select from '../../../components/ui/Select';
-import { Checkbox } from '../../../components/ui/Checkbox';
+import Icon from '../../../components/AppIcon.jsx';
+import Button from '../../../components/ui/Button.jsx';
+import Input from '../../../components/ui/Input.jsx';
+import Select from '../../../components/ui/Select.jsx';
+import { Checkbox } from '../../../components/ui/Checkbox.jsx';
 
 const CommunicationFilters = ({ onFiltersChange, totalCount }) => {
   const [currentLanguage, setCurrentLanguage] = useState('en');
@@ -15,7 +15,7 @@ const CommunicationFilters = ({ onFiltersChange, totalCount }) => {
     linkedEntity: '',
     hasAttachments: false,
     startDate: '',
-    endDate: ''
+    endDate: '',
   });
 
   useEffect(() => {
@@ -51,7 +51,7 @@ const CommunicationFilters = ({ onFiltersChange, totalCount }) => {
       startDate: 'Start Date',
       endDate: 'End Date',
       clearFilters: 'Clear Filters',
-      totalResults: 'Total Results'
+      totalResults: 'Total Results',
     },
     es: {
       filters: 'Filtros',
@@ -80,8 +80,8 @@ const CommunicationFilters = ({ onFiltersChange, totalCount }) => {
       startDate: 'Fecha de Inicio',
       endDate: 'Fecha de Fin',
       clearFilters: 'Limpiar Filtros',
-      totalResults: 'Resultados Totales'
-    }
+      totalResults: 'Resultados Totales',
+    },
   };
 
   const t = labels?.[currentLanguage];
@@ -91,7 +91,7 @@ const CommunicationFilters = ({ onFiltersChange, totalCount }) => {
     { value: 'email', label: t?.email },
     { value: 'whatsapp', label: t?.whatsapp },
     { value: 'phone', label: t?.phone },
-    { value: 'meeting', label: t?.meeting }
+    { value: 'meeting', label: t?.meeting },
   ];
 
   const dateRangeOptions = [
@@ -100,7 +100,7 @@ const CommunicationFilters = ({ onFiltersChange, totalCount }) => {
     { value: 'thisWeek', label: t?.thisWeek },
     { value: 'thisMonth', label: t?.thisMonth },
     { value: 'last30Days', label: t?.last30Days },
-    { value: 'custom', label: t?.customRange }
+    { value: 'custom', label: t?.customRange },
   ];
 
   const participantOptions = [
@@ -111,14 +111,14 @@ const CommunicationFilters = ({ onFiltersChange, totalCount }) => {
     { value: 'ana.martinez@pinnacle.cl', label: 'Ana Martinez' },
     { value: 'rajesh.kumar@pinnaclelife.in', label: 'Rajesh Kumar' },
     { value: 'priya.sharma@pinnaclelife.in', label: 'Priya Sharma' },
-    { value: 'amit.patel@pinnaclelife.in', label: 'Amit Patel' }
+    { value: 'amit.patel@pinnaclelife.in', label: 'Amit Patel' },
   ];
 
   const linkedEntityOptions = [
     { value: '', label: t?.allEntities },
     { value: 'tenders', label: t?.tenders },
     { value: 'orders', label: t?.orders },
-    { value: 'imports', label: t?.imports }
+    { value: 'imports', label: t?.imports },
   ];
 
   const handleFilterChange = (key, value) => {
@@ -136,7 +136,7 @@ const CommunicationFilters = ({ onFiltersChange, totalCount }) => {
       linkedEntity: '',
       hasAttachments: false,
       startDate: '',
-      endDate: ''
+      endDate: '',
     };
     setFilters(clearedFilters);
     onFiltersChange(clearedFilters);
@@ -155,6 +155,7 @@ const CommunicationFilters = ({ onFiltersChange, totalCount }) => {
           {t?.clearFilters}
         </Button>
       </div>
+
       <div className="space-y-6">
         {/* Search */}
         <div>
@@ -231,7 +232,7 @@ const CommunicationFilters = ({ onFiltersChange, totalCount }) => {
           <Checkbox
             label={t?.hasAttachments}
             checked={filters?.hasAttachments}
-            onChange={(e) => handleFilterChange('hasAttachments', e?.target?.checked)}
+            onChange={(checked) => handleFilterChange('hasAttachments', checked)}
           />
         </div>
 
@@ -239,7 +240,9 @@ const CommunicationFilters = ({ onFiltersChange, totalCount }) => {
         <div className="pt-4 border-t border-border">
           <div className="flex items-center space-x-2 text-sm text-muted-foreground">
             <Icon name="MessageSquare" size={16} />
-            <span>{t?.totalResults}: {totalCount}</span>
+            <span>
+              {t?.totalResults}: {totalCount}
+            </span>
           </div>
         </div>
       </div>

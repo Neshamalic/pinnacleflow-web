@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import Icon from '../../../components/AppIcon';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, BarChart, Bar
+} from 'recharts';
+import Icon from '../../../components/AppIcon.jsx'; // 👈 extensión añadida
 
 const DemandChart = () => {
   const [currentLanguage, setCurrentLanguage] = useState('en');
@@ -89,7 +92,7 @@ const DemandChart = () => {
           <button
             onClick={() => setChartType('line')}
             className={`p-2 rounded-lg transition-colors duration-200 ${
-              chartType === 'line' ?'bg-blue-100 text-blue-600' :'text-slate-400 hover:text-slate-600'
+              chartType === 'line' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
             <Icon name="TrendingUp" size={16} />
@@ -97,7 +100,7 @@ const DemandChart = () => {
           <button
             onClick={() => setChartType('bar')}
             className={`p-2 rounded-lg transition-colors duration-200 ${
-              chartType === 'bar' ?'bg-blue-100 text-blue-600' :'text-slate-400 hover:text-slate-600'
+              chartType === 'bar' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
             <Icon name="BarChart3" size={16} />
@@ -110,28 +113,21 @@ const DemandChart = () => {
           {chartType === 'line' ? (
             <LineChart data={demandData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis 
-                dataKey="month" 
-                stroke="#64748b"
-                fontSize={12}
-              />
-              <YAxis 
-                stroke="#64748b"
-                fontSize={12}
-              />
+              <XAxis dataKey="month" stroke="#64748b" fontSize={12} />
+              <YAxis stroke="#64748b" fontSize={12} />
               <Tooltip content={<CustomTooltip />} />
-              <Line 
-                type="monotone" 
-                dataKey="demand" 
-                stroke="#1e40af" 
+              <Line
+                type="monotone"
+                dataKey="demand"
+                stroke="#1e40af"
                 strokeWidth={3}
                 dot={{ fill: '#1e40af', strokeWidth: 2, r: 4 }}
                 name={currentLanguage === 'es' ? 'Demanda Real' : 'Actual Demand'}
               />
-              <Line 
-                type="monotone" 
-                dataKey="forecast" 
-                stroke="#0ea5e9" 
+              <Line
+                type="monotone"
+                dataKey="forecast"
+                stroke="#0ea5e9"
                 strokeWidth={2}
                 strokeDasharray="5 5"
                 dot={{ fill: '#0ea5e9', strokeWidth: 2, r: 3 }}
@@ -141,24 +137,17 @@ const DemandChart = () => {
           ) : (
             <BarChart data={demandData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis 
-                dataKey="month" 
-                stroke="#64748b"
-                fontSize={12}
-              />
-              <YAxis 
-                stroke="#64748b"
-                fontSize={12}
-              />
+              <XAxis dataKey="month" stroke="#64748b" fontSize={12} />
+              <YAxis stroke="#64748b" fontSize={12} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar 
-                dataKey="demand" 
+              <Bar
+                dataKey="demand"
                 fill="#1e40af"
                 name={currentLanguage === 'es' ? 'Demanda Real' : 'Actual Demand'}
                 radius={[4, 4, 0, 0]}
               />
-              <Bar 
-                dataKey="forecast" 
+              <Bar
+                dataKey="forecast"
                 fill="#0ea5e9"
                 name={currentLanguage === 'es' ? 'Pronóstico' : 'Forecast'}
                 radius={[4, 4, 0, 0]}

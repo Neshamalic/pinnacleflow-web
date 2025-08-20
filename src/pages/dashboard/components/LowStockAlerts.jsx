@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
+import Icon from '../../../components/AppIcon.jsx';      // 👈 añade la extensión
+import Button from '../../../components/ui/Button.jsx';   // 👈 añade la extensión
 
 const LowStockAlerts = () => {
   const [currentLanguage, setCurrentLanguage] = useState('en');
@@ -127,7 +127,7 @@ const LowStockAlerts = () => {
                   </h4>
                   {getStatusBadge(alert?.status, alert?.daysRemaining)}
                 </div>
-                
+
                 <div className="space-y-1 text-xs text-muted-foreground">
                   <div className="flex justify-between">
                     <span>{currentLanguage === 'es' ? 'Stock actual:' : 'Current stock:'}</span>
@@ -167,8 +167,7 @@ const LowStockAlerts = () => {
         <div className="text-center py-8">
           <Icon name="CheckCircle" size={48} className="mx-auto text-green-500 mb-3" />
           <p className="text-sm text-muted-foreground">
-            {currentLanguage === 'es' ?'No hay alertas de stock bajo' :'No low stock alerts'
-            }
+            {currentLanguage === 'es' ? 'No hay alertas de stock bajo' : 'No low stock alerts'}
           </p>
         </div>
       )}

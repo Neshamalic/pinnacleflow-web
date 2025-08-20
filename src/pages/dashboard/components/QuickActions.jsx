@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
+import Icon from '../../../components/AppIcon.jsx';
+import Button from '../../../components/ui/Button.jsx';
 
 const QuickActions = () => {
   const [currentLanguage, setCurrentLanguage] = useState('en');
@@ -48,35 +48,15 @@ const QuickActions = () => {
   const getColorClasses = (color) => {
     switch (color) {
       case 'blue':
-        return {
-          bg: 'bg-blue-50 hover:bg-blue-100',
-          icon: 'bg-blue-100 text-blue-600',
-          border: 'border-blue-200'
-        };
+        return { bg: 'bg-blue-50 hover:bg-blue-100', icon: 'bg-blue-100 text-blue-600', border: 'border-blue-200' };
       case 'green':
-        return {
-          bg: 'bg-emerald-50 hover:bg-emerald-100',
-          icon: 'bg-emerald-100 text-emerald-600',
-          border: 'border-emerald-200'
-        };
+        return { bg: 'bg-emerald-50 hover:bg-emerald-100', icon: 'bg-emerald-100 text-emerald-600', border: 'border-emerald-200' };
       case 'purple':
-        return {
-          bg: 'bg-purple-50 hover:bg-purple-100',
-          icon: 'bg-purple-100 text-purple-600',
-          border: 'border-purple-200'
-        };
+        return { bg: 'bg-purple-50 hover:bg-purple-100', icon: 'bg-purple-100 text-purple-600', border: 'border-purple-200' };
       case 'orange':
-        return {
-          bg: 'bg-orange-50 hover:bg-orange-100',
-          icon: 'bg-orange-100 text-orange-600',
-          border: 'border-orange-200'
-        };
+        return { bg: 'bg-orange-50 hover:bg-orange-100', icon: 'bg-orange-100 text-orange-600', border: 'border-orange-200' };
       default:
-        return {
-          bg: 'bg-slate-50 hover:bg-slate-100',
-          icon: 'bg-slate-100 text-slate-600',
-          border: 'border-slate-200'
-        };
+        return { bg: 'bg-slate-50 hover:bg-slate-100', icon: 'bg-slate-100 text-slate-600', border: 'border-slate-200' };
     }
   };
 
@@ -88,10 +68,10 @@ const QuickActions = () => {
         </h3>
         <Icon name="Zap" size={20} className="text-slate-400" />
       </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {quickActions?.map((action) => {
           const colors = getColorClasses(action?.color);
-          
           return (
             <button
               key={action?.id}
@@ -103,34 +83,21 @@ const QuickActions = () => {
                   <Icon name={action?.icon} size={20} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-slate-900 mb-1">
-                    {action?.title}
-                  </h4>
-                  <p className="text-sm text-slate-600 leading-relaxed">
-                    {action?.description}
-                  </p>
+                  <h4 className="font-medium text-slate-900 mb-1">{action?.title}</h4>
+                  <p className="text-sm text-slate-600 leading-relaxed">{action?.description}</p>
                 </div>
               </div>
             </button>
           );
         })}
       </div>
+
       <div className="mt-6 pt-4 border-t border-slate-100">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Button 
-            variant="outline" 
-            iconName="Download" 
-            iconPosition="left"
-            className="w-full"
-          >
+          <Button variant="outline" iconName="Download" iconPosition="left" className="w-full">
             {currentLanguage === 'es' ? 'Exportar Datos' : 'Export Data'}
           </Button>
-          <Button 
-            variant="outline" 
-            iconName="Settings" 
-            iconPosition="left"
-            className="w-full"
-          >
+          <Button variant="outline" iconName="Settings" iconPosition="left" className="w-full">
             {currentLanguage === 'es' ? 'Configuración' : 'Settings'}
           </Button>
         </div>

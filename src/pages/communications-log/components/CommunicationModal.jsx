@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
-import Input from '../../../components/ui/Input';
-import Select from '../../../components/ui/Select';
+import Icon from '../../../components/AppIcon.jsx';
+import Button from '../../../components/ui/Button.jsx';
+import Input from '../../../components/ui/Input.jsx';
+import Select from '../../../components/ui/Select.jsx';
 
 const CommunicationModal = ({ isOpen, onClose, onSave }) => {
   const [currentLanguage, setCurrentLanguage] = useState('en');
@@ -12,7 +12,7 @@ const CommunicationModal = ({ isOpen, onClose, onSave }) => {
     content: '',
     participants: [],
     linkedEntities: [],
-    attachments: []
+    attachments: [],
   });
   const [dragActive, setDragActive] = useState(false);
 
@@ -40,10 +40,11 @@ const CommunicationModal = ({ isOpen, onClose, onSave }) => {
       selectEntities: 'Select linked entities...',
       attachments: 'Attachments',
       dragDropFiles: 'Drag and drop files here, or click to select',
-      supportedFormats: 'Supported formats: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (Max 10MB)',
+      supportedFormats:
+        'Supported formats: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (Max 10MB)',
       cancel: 'Cancel',
       save: 'Save Communication',
-      removeFile: 'Remove file'
+      removeFile: 'Remove file',
     },
     es: {
       newCommunication: 'Nueva Comunicación',
@@ -62,12 +63,14 @@ const CommunicationModal = ({ isOpen, onClose, onSave }) => {
       linkedEntities: 'Entidades Vinculadas',
       selectEntities: 'Seleccionar entidades vinculadas...',
       attachments: 'Archivos Adjuntos',
-      dragDropFiles: 'Arrastra y suelta archivos aquí, o haz clic para seleccionar',
-      supportedFormats: 'Formatos soportados: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (Máx 10MB)',
+      dragDropFiles:
+        'Arrastra y suelta archivos aquí, o haz clic para seleccionar',
+      supportedFormats:
+        'Formatos soportados: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (Máx 10MB)',
       cancel: 'Cancelar',
       save: 'Guardar Comunicación',
-      removeFile: 'Eliminar archivo'
-    }
+      removeFile: 'Eliminar archivo',
+    },
   };
 
   const t = labels?.[currentLanguage];
@@ -77,41 +80,77 @@ const CommunicationModal = ({ isOpen, onClose, onSave }) => {
     { value: 'email', label: t?.email },
     { value: 'whatsapp', label: t?.whatsapp },
     { value: 'phone', label: t?.phone },
-    { value: 'meeting', label: t?.meeting }
+    { value: 'meeting', label: t?.meeting },
   ];
 
   const participantOptions = [
-    { value: 'carlos.rodriguez@pinnacle.cl', label: 'Carlos Rodriguez (carlos.rodriguez@pinnacle.cl)' },
-    { value: 'maria.gonzalez@pinnacle.cl', label: 'Maria Gonzalez (maria.gonzalez@pinnacle.cl)' },
-    { value: 'juan.silva@pinnacle.cl', label: 'Juan Silva (juan.silva@pinnacle.cl)' },
-    { value: 'ana.martinez@pinnacle.cl', label: 'Ana Martinez (ana.martinez@pinnacle.cl)' },
-    { value: 'rajesh.kumar@pinnaclelife.in', label: 'Rajesh Kumar (rajesh.kumar@pinnaclelife.in)' },
-    { value: 'priya.sharma@pinnaclelife.in', label: 'Priya Sharma (priya.sharma@pinnaclelife.in)' },
-    { value: 'amit.patel@pinnaclelife.in', label: 'Amit Patel (amit.patel@pinnaclelife.in)' }
+    {
+      value: 'carlos.rodriguez@pinnacle.cl',
+      label: 'Carlos Rodriguez (carlos.rodriguez@pinnacle.cl)',
+    },
+    {
+      value: 'maria.gonzalez@pinnacle.cl',
+      label: 'Maria Gonzalez (maria.gonzalez@pinnacle.cl)',
+    },
+    {
+      value: 'juan.silva@pinnacle.cl',
+      label: 'Juan Silva (juan.silva@pinnacle.cl)',
+    },
+    {
+      value: 'ana.martinez@pinnacle.cl',
+      label: 'Ana Martinez (ana.martinez@pinnacle.cl)',
+    },
+    {
+      value: 'rajesh.kumar@pinnaclelife.in',
+      label: 'Rajesh Kumar (rajesh.kumar@pinnaclelife.in)',
+    },
+    {
+      value: 'priya.sharma@pinnaclelife.in',
+      label: 'Priya Sharma (priya.sharma@pinnaclelife.in)',
+    },
+    {
+      value: 'amit.patel@pinnaclelife.in',
+      label: 'Amit Patel (amit.patel@pinnaclelife.in)',
+    },
   ];
 
   const entityOptions = [
     { value: 'tender-2024-001', label: 'Tender #2024-001 - Antibiotics Supply' },
-    { value: 'tender-2024-002', label: 'Tender #2024-002 - Cardiovascular Medications' },
-    { value: 'order-PO-2024-045', label: 'Order #PO-2024-045 - Amoxicillin 500mg' },
-    { value: 'order-PO-2024-046', label: 'Order #PO-2024-046 - Metformin 850mg' },
-    { value: 'import-IMP-2024-012', label: 'Import #IMP-2024-012 - Q1 Antibiotics Shipment' },
-    { value: 'import-IMP-2024-013', label: 'Import #IMP-2024-013 - Diabetes Medications' }
+    {
+      value: 'tender-2024-002',
+      label: 'Tender #2024-002 - Cardiovascular Medications',
+    },
+    {
+      value: 'order-PO-2024-045',
+      label: 'Order #PO-2024-045 - Amoxicillin 500mg',
+    },
+    {
+      value: 'order-PO-2024-046',
+      label: 'Order #PO-2024-046 - Metformin 850mg',
+    },
+    {
+      value: 'import-IMP-2024-012',
+      label: 'Import #IMP-2024-012 - Q1 Antibiotics Shipment',
+    },
+    {
+      value: 'import-IMP-2024-013',
+      label: 'Import #IMP-2024-013 - Diabetes Medications',
+    },
   ];
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
   const handleDrag = (e) => {
     e?.preventDefault();
     e?.stopPropagation();
-    if (e?.type === "dragenter" || e?.type === "dragover") {
+    if (e?.type === 'dragenter' || e?.type === 'dragover') {
       setDragActive(true);
-    } else if (e?.type === "dragleave") {
+    } else if (e?.type === 'dragleave') {
       setDragActive(false);
     }
   };
@@ -120,7 +159,7 @@ const CommunicationModal = ({ isOpen, onClose, onSave }) => {
     e?.preventDefault();
     e?.stopPropagation();
     setDragActive(false);
-    
+
     if (e?.dataTransfer?.files && e?.dataTransfer?.files?.[0]) {
       handleFiles(e?.dataTransfer?.files);
     }
@@ -133,24 +172,24 @@ const CommunicationModal = ({ isOpen, onClose, onSave }) => {
   };
 
   const handleFiles = (files) => {
-    const newAttachments = Array.from(files)?.map(file => ({
+    const newAttachments = Array.from(files)?.map((file) => ({
       id: Date.now() + Math.random(),
       name: file?.name,
       size: (file?.size / 1024 / 1024)?.toFixed(2) + ' MB',
       type: file?.type,
-      file: file
+      file: file,
     }));
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      attachments: [...prev?.attachments, ...newAttachments]
+      attachments: [...prev?.attachments, ...newAttachments],
     }));
   };
 
   const removeAttachment = (attachmentId) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      attachments: prev?.attachments?.filter(att => att?.id !== attachmentId)
+      attachments: prev?.attachments?.filter((att) => att?.id !== attachmentId),
     }));
   };
 
@@ -159,9 +198,11 @@ const CommunicationModal = ({ isOpen, onClose, onSave }) => {
       ...formData,
       id: Date.now(),
       date: new Date()?.toISOString(),
-      preview: formData?.content?.substring(0, 150) + (formData?.content?.length > 150 ? '...' : '')
+      preview:
+        formData?.content?.substring(0, 150) +
+        (formData?.content?.length > 150 ? '...' : ''),
     };
-    
+
     onSave(communicationData);
     setFormData({
       type: '',
@@ -169,7 +210,7 @@ const CommunicationModal = ({ isOpen, onClose, onSave }) => {
       content: '',
       participants: [],
       linkedEntities: [],
-      attachments: []
+      attachments: [],
     });
     onClose();
   };
@@ -275,7 +316,10 @@ const CommunicationModal = ({ isOpen, onClose, onSave }) => {
             {formData?.attachments?.length > 0 && (
               <div className="mt-4 space-y-2">
                 {formData?.attachments?.map((attachment) => (
-                  <div key={attachment?.id} className="flex items-center justify-between bg-muted rounded-lg px-3 py-2">
+                  <div
+                    key={attachment?.id}
+                    className="flex items-center justify-between bg-muted rounded-lg px-3 py-2"
+                  >
                     <div className="flex items-center space-x-3">
                       <Icon name="FileText" size={16} className="text-muted-foreground" />
                       <div>
@@ -301,7 +345,7 @@ const CommunicationModal = ({ isOpen, onClose, onSave }) => {
           <Button variant="outline" onClick={onClose}>
             {t?.cancel}
           </Button>
-          <Button 
+          <Button
             onClick={handleSave}
             disabled={!formData?.type || !formData?.subject || !formData?.content}
           >

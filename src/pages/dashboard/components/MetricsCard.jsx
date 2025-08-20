@@ -1,5 +1,5 @@
 import React from 'react';
-import Icon from '../../../components/AppIcon';
+import Icon from '../../../components/AppIcon.jsx'; // 👈 importa con extensión
 
 const MetricsCard = ({ title, value, subtitle, icon, trend, color = 'blue', onClick }) => {
   const getColorClasses = () => {
@@ -38,7 +38,7 @@ const MetricsCard = ({ title, value, subtitle, icon, trend, color = 'blue', onCl
   const colors = getColorClasses();
 
   return (
-    <div 
+    <div
       className={`${colors?.bg} ${colors?.border} border rounded-lg p-6 cursor-pointer hover:shadow-md transition-all duration-200`}
       onClick={onClick}
     >
@@ -46,19 +46,18 @@ const MetricsCard = ({ title, value, subtitle, icon, trend, color = 'blue', onCl
         <div className="flex-1">
           <p className="text-sm font-medium text-slate-600 mb-1">{title}</p>
           <p className="text-2xl font-bold text-slate-900 mb-1">{value}</p>
-          {subtitle && (
-            <p className="text-sm text-slate-500">{subtitle}</p>
-          )}
+          {subtitle && <p className="text-sm text-slate-500">{subtitle}</p>}
         </div>
         <div className={`${colors?.icon} p-3 rounded-lg`}>
           <Icon name={icon} size={24} />
         </div>
       </div>
+
       {trend && (
         <div className="mt-4 flex items-center">
-          <Icon 
-            name={trend?.direction === 'up' ? 'TrendingUp' : 'TrendingDown'} 
-            size={16} 
+          <Icon
+            name={trend?.direction === 'up' ? 'TrendingUp' : 'TrendingDown'}
+            size={16}
             className={trend?.direction === 'up' ? 'text-emerald-500' : 'text-red-500'}
           />
           <span className={`ml-1 text-sm ${trend?.direction === 'up' ? 'text-emerald-600' : 'text-red-600'}`}>

@@ -1,11 +1,13 @@
-import TenderDetail from './pages/tender-management/TenderDetail';
-import TenderForm from './pages/tender-management/TenderForm';
-import React from "react";
-import Routes from "./Routes";
+// src/App.jsx
+import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
+import AppRoutes from './Routes'; // antes importabas "Routes" a secas
 
 function App() {
   return (
-    <Routes />
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
   );
 }
 

@@ -10,22 +10,22 @@ const TenderTable = ({
   onTenderSelectAll,
   onTenderView,
   onTenderEdit,
-  onTenderDelete, // <- nuevo
+  onTenderDelete, // <- delete opcional
   sortConfig = { key: 'createdDate', direction: 'desc' },
   onSort,
 }) => {
-  const t = (en, es) => (currentLanguage === 'es' ? es : en);
+  const tr = (en, es) => (currentLanguage === 'es' ? es : en);
 
   const allSelected = tenders.length > 0 && selectedTenders.length === tenders.length;
 
-  const th = (key, label) => (
+  const Th = ({ k, label }) => (
     <th
       className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer select-none"
-      onClick={() => onSort?.(key)}
+      onClick={() => onSort?.(k)}
     >
       <div className="inline-flex items-center gap-1">
         {label}
-        {sortConfig?.key === key && (
+        {sortConfig?.key === k && (
           <Icon name={sortConfig?.direction === 'asc' ? 'ArrowUp' : 'ArrowDown'} size={14} />
         )}
       </div>
@@ -65,14 +65,14 @@ const TenderTable = ({
                 onChange={onTenderSelectAll}
               />
             </th>
-            {th('tenderId', t('Tender', 'Licitación'))}
-            {th('productsCount', t('Products', 'Productos'))}
-            {th('totalValue', t('Total Value', 'Valor Total'))}
-            {th('createdDate', t('First Delivery', 'Primera Entrega'))}
-            {th('deliveryDate', t('Last Delivery', 'Última Entrega'))}
-            {th('stockCoverage', t('Coverage', 'Cobertura'))}
+            <Th k="tenderId" label={tr('Tender', 'Licitación')} />
+            <Th k="productsCount" label={tr('Products', 'Productos')} />
+            <Th k="totalValue" label={tr('Total Value', 'Valor Total')} />
+            <Th k="createdDate" label={tr('First Delivery', 'Primera Entrega')} />
+            <Th k="deliveryDate" label={tr('Last Delivery', 'Última Entrega')} />
+            <Th k="stockCoverage" label={tr('Coverage', 'Cobertura')} />
             <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              {t('Actions', 'Acciones')}
+              {tr('Actions', 'Acciones')}
             </th>
           </tr>
         </thead>
@@ -81,41 +81,43 @@ const TenderTable = ({
           {tenders.length === 0 && (
             <tr>
               <td colSpan={8} className="px-4 py-6 text-center text-muted-foreground">
-                {t('No tenders found', 'No hay licitaciones')}
+                {tr('No tenders found', 'No hay licitaciones')}
               </td>
             </tr>
           )}
 
-          {tenders.map((t) => {
-            const checked = selectedTenders.includes(t.id);
-            const coveragePct = Math.max(0, Math.min(100, Number(t.stockCoverage || 0)));
+          {tenders.map((row) => {
+            const checked = selectedTenders.includes(row.id);
+            const coveragePct = Math.max(0, Math.min(100, Number(row.stockCoverage || 0)));
 
             return (
-              <tr key={t.id} className="hover:bg-muted/50">
+              <tr key={row.id} className="hover:bg-muted/50">
                 <td className="px-4 py-3">
                   <input
                     type="checkbox"
                     className="accent-primary"
                     checked={checked}
-                    onChange={() => onTenderSelect?.(t.id)}
+                    onChange={() => onTenderSelect?.(row.id)}
                   />
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-foreground">{t.tenderId}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      t.isOverdue
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-emerald-100 text-emerald-700'
-                    }`}>
-                      {t.isOverdue ? t('Overdue', 'Atrasada') : t('On Track', 'En Curso')}
+                    <span className="font-medium text-foreground">{row.tenderId}</span>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full ${
+                        row.isOverdue
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-emerald-100 text-emerald-700'
+                      }`}
+                    >
+                      {row.isOverdue ? tr('Overdue', 'Atrasada') : tr('On Track', 'En Curso')}
                     </span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-foreground">{t.productsCount || 0}</td>
-                <td className="px-4 py-3 text-foreground">{fmtCur(t.totalValue, t.currency)}</td>
-                <td className="px-4 py-3 text-muted-foreground">{fmtDate(t.createdDate)}</td>
-                <td className="px-4 py-3 text-muted-foreground">{fmtDate(t.deliveryDate)}</td>
+                <td className="px-4 py-3 text-foreground">{row.productsCount || 0}</td>
+                <td className="px-4 py-3 text-foreground">{fmtCur(row.totalValue, row.currency)}</td>
+                <td className="px-4 py-3 text-muted-foreground">{fmtDate(row.createdDate)}</td>
+                <td className="px-4 py-3 text-muted-foreground">{fmtDate(row.deliveryDate)}</td>
                 <td className="px-4 py-3">
                   <div className="w-32 bg-muted rounded-full h-2">
                     <div
@@ -126,21 +128,21 @@ const TenderTable = ({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => onTenderView?.(t.id)} iconName="Eye">
-                      {t('View', 'Ver')}
+                    <Button variant="ghost" size="sm" onClick={() => onTenderView?.(row.id)} iconName="Eye">
+                      {tr('View', 'Ver')}
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => onTenderEdit?.(t.id)} iconName="Edit">
-                      {t('Edit', 'Editar')}
+                    <Button variant="ghost" size="sm" onClick={() => onTenderEdit?.(row.id)} iconName="Edit">
+                      {tr('Edit', 'Editar')}
                     </Button>
                     {onTenderDelete && (
                       <Button
                         variant="ghost"
                         size="sm"
                         className="text-red-600 hover:text-red-700"
-                        onClick={() => onTenderDelete(t)}
+                        onClick={() => onTenderDelete(row)}
                         iconName="Trash2"
                       >
-                        {t('Delete', 'Eliminar')}
+                        {tr('Delete', 'Eliminar')}
                       </Button>
                     )}
                   </div>
@@ -155,3 +157,4 @@ const TenderTable = ({
 };
 
 export default TenderTable;
+

@@ -1,96 +1,87 @@
 import React from 'react';
-import { fmtDate, fmtInt, fmtCurrency } from '../../../utils/format.js';
+import Button from '../../../components/ui/Button';
 
 const OrdersTable = ({
   currentLanguage = 'en',
   loading = false,
   orders = [],
-  onRowClick, // opcional: si lo pasas, habilita click en filas y botón "Ver ítems"
+  onView,
+  onEdit,
+  onDelete,
 }) => {
-  const lang = currentLanguage;
-  const isClickable = typeof onRowClick === 'function';
+  const tr = (en, es) => (currentLanguage === 'es' ? es : en);
 
-  if (loading) {
-    return (
-      <div className="bg-card rounded-lg border border-border p-6">
-        {lang === 'es' ? 'Cargando órdenes…' : 'Loading orders…'}
-      </div>
-    );
-  }
-
-  if (!orders.length) {
-    return (
-      <div className="bg-card rounded-lg border border-border p-6">
-        {lang === 'es' ? 'No hay órdenes.' : 'No orders.'}
-      </div>
-    );
-  }
+  const fmtCur = (v, cur = 'CLP') =>
+    new Intl.NumberFormat(currentLanguage === 'es' ? 'es-CL' : 'en-US', {
+      style: 'currency',
+      currency: cur,
+      maximumFractionDigits: 0
+    }).format(Number(v || 0));
 
   return (
-    <div className="overflow-x-auto bg-card rounded-lg border border-border">
-      <table className="min-w-full text-left">
-        <thead className="bg-muted/50 border-b border-border">
-          <tr className="text-sm text-muted-foreground">
-            <th className="px-4 py-3">{lang === 'es' ? 'PO #' : 'PO #'}</th>
-            <th className="px-4 py-3">{lang === 'es' ? 'Proveedor' : 'Supplier'}</th>
-            <th className="px-4 py-3">{lang === 'es' ? 'Licitación' : 'Tender'}</th>
-            <th className="px-4 py-3">{lang === 'es' ? 'Fecha Orden' : 'Order Date'}</th>
-            <th className="px-4 py-3">Incoterm</th>
-            <th className="px-4 py-3">{lang === 'es' ? 'Moneda' : 'Currency'}</th>
-            <th className="px-4 py-3">{lang === 'es' ? 'Cant. Total' : 'Total Qty'}</th>
-            <th className="px-4 py-3">{lang === 'es' ? 'Valor Total' : 'Total Value'}</th>
-            <th className="px-4 py-3">{lang === 'es' ? 'Estado' : 'Status'}</th>
-            <th className="px-4 py-3">{lang === 'es' ? 'Acciones' : 'Actions'}</th>
+    <div className="bg-card rounded-lg border border-border overflow-hidden">
+      <table className="min-w-full">
+        <thead className="bg-muted/50">
+          <tr className="text-xs uppercase tracking-wide text-muted-foreground">
+            <th className="px-4 py-3 text-left">{tr('PO Number', 'N° OC')}</th>
+            <th className="px-4 py-3 text-left">{tr('Supplier', 'Proveedor')}</th>
+            <th className="px-4 py-3 text-left">{tr('Tender', 'Licitación')}</th>
+            <th className="px-4 py-3 text-left">{tr('Order Date', 'Fecha Orden')}</th>
+            <th className="px-4 py-3 text-left">{tr('Incoterm', 'Incoterm')}</th>
+            <th className="px-4 py-3 text-right">{tr('Total Qty', 'Cant. Total')}</th>
+            <th className="px-4 py-3 text-right">{tr('Total Value', 'Valor Total')}</th>
+            <th className="px-4 py-3 text-left">{tr('Status', 'Estado')}</th>
+            <th className="px-4 py-3 text-left">{tr('Actions', 'Acciones')}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          {orders.map((o, idx) => {
-            const rowProps = isClickable
-              ? {
-                  onClick: () => onRowClick(o),
-                  className:
-                    'text-sm text-foreground hover:bg-muted/30 cursor-pointer',
-                  title: lang === 'es' ? 'Ver ítems' : 'View items',
-                }
-              : {
-                  className: 'text-sm text-foreground',
-                };
+          {loading && (
+            <tr>
+              <td colSpan={9} className="px-4 py-6 text-center text-muted-foreground">
+                {tr('Loading…', 'Cargando…')}
+              </td>
+            </tr>
+          )}
 
-            return (
-              <tr key={o.poNumber || idx} {...rowProps}>
-                <td className="px-4 py-3 font-medium">{o.poNumber || '-'}</td>
-                <td className="px-4 py-3">{o.supplier || '-'}</td>
-                <td className="px-4 py-3">{o.tenderNumber || '-'}</td>
-                <td className="px-4 py-3">{fmtDate(o.orderDate, lang)}</td>
-                <td className="px-4 py-3">{o.incoterm || '-'}</td>
-                <td className="px-4 py-3">{o.currency || '-'}</td>
-                <td className="px-4 py-3">{fmtInt(o.totalQty, lang)}</td>
-                <td className="px-4 py-3">
-                  {fmtCurrency(o.totalValue, o.currency || 'USD', lang)}
-                </td>
-                <td className="px-4 py-3">
-                  <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs">
-                    {o.status || (lang === 'es' ? 'Abierta' : 'Open')}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  {isClickable ? (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRowClick(o);
-                      }}
-                      className="text-primary hover:underline text-sm"
-                    >
-                      {lang === 'es' ? 'Ver ítems' : 'View items'}
-                    </button>
-                  ) : (
-                    <span className="text-muted-foreground text-sm">—</span>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
+          {!loading && orders.length === 0 && (
+            <tr>
+              <td colSpan={9} className="px-4 py-6 text-center text-muted-foreground">
+                {tr('No orders found', 'No hay órdenes')}
+              </td>
+            </tr>
+          )}
+
+          {!loading && orders.map((row) => (
+            <tr key={row.poNumber} className="hover:bg-muted/50">
+              <td className="px-4 py-3 font-medium text-foreground">{row.poNumber}</td>
+              <td className="px-4 py-3">{row.supplier}</td>
+              <td className="px-4 py-3">{row.tenderNumber}</td>
+              <td className="px-4 py-3">{row.orderDate || '—'}</td>
+              <td className="px-4 py-3">{row.incoterm || '—'}</td>
+              <td className="px-4 py-3 text-right">{row.totalQty || 0}</td>
+              <td className="px-4 py-3 text-right">{fmtCur(row.totalValue, row.currency)}</td>
+              <td className="px-4 py-3">{row.status || 'open'}</td>
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" iconName="Eye" onClick={() => onView?.(row)}>
+                    {tr('View', 'Ver')}
+                  </Button>
+                  <Button variant="ghost" size="sm" iconName="Edit" onClick={() => onEdit?.(row)}>
+                    {tr('Edit', 'Editar')}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700"
+                    iconName="Trash2"
+                    onClick={() => onDelete?.(row)}
+                  >
+                    {tr('Delete', 'Eliminar')}
+                  </Button>
+                </div>
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>

@@ -1,62 +1,53 @@
 // src/lib/googleSheet.js
-// Librería para hablar con tu Apps Script (Google Sheets backend)
+// Pequeña librería para LEER/ESCRIBIR usando tu Apps Script evitando preflight
 
 import { APP_SCRIPT_URL } from './sheetsConfig';
 
-/** Lee una hoja completa (usa tu Apps Script) */
-export async function fetchGoogleSheet({ sheetName }) {
+/** Helper simple para GET JSON */
+async function getJSON(url) {
+  const res = await fetch(url, { method: 'GET' });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '');
+    throw new Error(`GET ${res.status}: ${txt || res.statusText}`);
+  }
+  return res.json();
+}
+
+/** LECTURA: usa tu Apps Script con route=table&name=... */
+export async function fetchGoogleSheet({ sheetId, sheetName }) {
+  // sheetId se ignora; tu Apps Script ya conoce el Spreadsheet ID fijo.
   const url = `${APP_SCRIPT_URL}?route=table&name=${encodeURIComponent(sheetName)}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`GET ${sheetName} failed: ${await res.text()}`);
-  const data = await res.json();
-  if (data?.ok === false) throw new Error(data?.error || 'GET failed');
-  return data?.rows || [];
+  const json = await getJSON(url);
+  if (!json?.ok) throw new Error(json?.error || 'Unknown error');
+  return json.rows || [];
 }
 
-/** Crea una fila nueva en una hoja */
-export async function createRow({ sheetName, row }) {
-  const url = `${APP_SCRIPT_URL}?name=${encodeURIComponent(sheetName)}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ row }),
-  });
-  const out = await res.json();
-  if (!res.ok || out?.ok === false) {
-    throw new Error(out?.error || `POST ${sheetName} failed`);
-  }
-  return out;
-}
+/**
+ * ESCRITURA: POST + text/plain (sin preflight)
+ * action: 'create' | 'update' | 'delete'
+ * payload = { row }  ó  { where }
+ */
+export async function writeSheet(name, action, payload) {
+  const url = `${APP_SCRIPT_URL}?name=${encodeURIComponent(name)}&action=${encodeURIComponent(action)}`;
 
-/** Actualiza una fila (upsert si no la encuentra) */
-export async function updateRow({ sheetName, row }) {
-  // IMPORTANTE: para tender_items, debes incluir
-  // tender_number y presentation_code (llaves) en row
-  const url = `${APP_SCRIPT_URL}?name=${encodeURIComponent(sheetName)}`;
   const res = await fetch(url, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ row }),
+    method: 'POST',                     // <- SIEMPRE POST
+    headers: { 'Content-Type': 'text/plain' }, // <- text/plain evita preflight
+    body: JSON.stringify(payload || {}),
   });
-  const out = await res.json();
-  if (!res.ok || out?.ok === false) {
-    throw new Error(out?.error || `PUT ${sheetName} failed`);
-  }
-  return out;
-}
 
-/** Borra una fila por llaves (o id si existiera) */
-export async function deleteRow({ sheetName, where }) {
-  const url = `${APP_SCRIPT_URL}?name=${encodeURIComponent(sheetName)}`;
-  const res = await fetch(url, {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ where }),
-  });
-  const out = await res.json();
-  if (!res.ok || out?.ok === false) {
-    throw new Error(out?.error || `DELETE ${sheetName} failed`);
+  // Si CORS fallara, ni siquiera llegas aquí (verías "Failed to fetch")
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '');
+    throw new Error(`POST ${res.status}: ${txt || res.statusText}`);
   }
-  return out;
+
+  const json = await res.json().catch(async () => {
+    const t = await res.text();
+    throw new Error(`Respuesta no JSON: ${t}`);
+  });
+
+  if (!json?.ok) throw new Error(json?.error || 'Unknown error');
+  return json; // { ok:true, ... }
 }
 

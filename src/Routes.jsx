@@ -2,12 +2,15 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
-// Páginas principales (ajusta import paths si tu carpeta difiere)
+// Páginas principales
 import Dashboard from './pages/dashboard';
 import TenderManagement from './pages/tender-management';
 import TenderDetail from './pages/tender-management/TenderDetail';
 import TenderForm from './pages/tender-management/TenderForm';
+
 import PurchaseOrderTracking from './pages/purchase-order-tracking';
+import OrderForm from './pages/purchase-order-tracking/OrderForm'; // <- NUEVO
+
 import ImportManagement from './pages/import-management';
 import Forecasting from './pages/demand-forecasting';
 import CommunicationsLog from './pages/communications-log';
@@ -29,6 +32,8 @@ export default function AppRoutes() {
 
       {/* Órdenes de compra */}
       <Route path="/orders" element={<PurchaseOrderTracking />} />
+      <Route path="/orders/new" element={<OrderForm />} />                 {/* <- NUEVA */}
+      <Route path="/orders/:poNumber/edit" element={<OrderForm />} />      {/* <- NUEVA */}
 
       {/* Importaciones */}
       <Route path="/import-management" element={<ImportManagement />} />
@@ -45,3 +50,4 @@ export default function AppRoutes() {
     </Routes>
   );
 }
+

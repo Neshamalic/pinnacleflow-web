@@ -1,4 +1,4 @@
-// src/pages/tenders/TenderForm.jsx
+// src/pages/tender-management/TenderForm.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -9,7 +9,8 @@ import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import Icon from '../../components/AppIcon';
 
-import { fetchGoogleSheet, createRow, updateRow } from '../../lib/googleSheet';
+// 👇 IMPORTA writeSheet (no createRow/updateRow)
+import { fetchGoogleSheet, writeSheet } from '../../lib/googleSheet';
 
 const SHEET_NAME = 'tender_items';
 
@@ -102,9 +103,9 @@ const TenderForm = () => {
       tender_number: row?.tender_number || tenderId || '',
       presentation_code: row?.presentation_code || '',
       supplier_name: row?.supplier_name || '',
-      awarded_qty: row?.awarded_qty || '',
+      awarded_qty: row?.awarded_qty ?? '',
       currency: row?.currency || 'CLP',
-      unit_price: row?.unit_price || '',
+      unit_price: row?.unit_price ?? '',
       first_delivery_date: row?.first_delivery_date
         ? toYMD(row?.first_delivery_date)
         : '',
@@ -116,7 +117,6 @@ const TenderForm = () => {
   }
 
   function toYMD(d) {
-    // convierte date o string ISO a 'YYYY-MM-DD' para <input type="date">
     const date = new Date(d);
     if (isNaN(date)) return '';
     const y = date.getFullYear();
@@ -168,27 +168,25 @@ const TenderForm = () => {
       const rowToSend = {
         tender_number: String(form.tender_number).trim(),
         presentation_code: String(form.presentation_code).trim(),
-        supplier_name: form.supplier_name,
-        awarded_qty: Number(form.awarded_qty || 0),
+        supplier_name: form.supplier_name ?? '',
+        // Enviar como string evita problemas de coma/punto decimal
+        awarded_qty: String(form.awarded_qty ?? ''),
         currency: form.currency || 'CLP',
-        unit_price: Number(form.unit_price || 0),
-        // Enviar en formato ISO a tu Apps Script (puede recibirlo tal cual)
+        unit_price: String(form.unit_price ?? ''),
         first_delivery_date: form.first_delivery_date || '',
         last_delivery_date: form.last_delivery_date || '',
         notes: form.notes || '',
       };
 
-      if (isEdit) {
-        // PUT (upsert por llaves)
-        await updateRow({ sheetName: SHEET_NAME, row: rowToSend });
-        alert(t('Updated successfully.', 'Actualizado correctamente.'));
-      } else {
-        // POST (nueva fila)
-        await createRow({ sheetName: SHEET_NAME, row: rowToSend });
-        alert(t('Created successfully.', 'Creado correctamente.'));
-      }
+      const action = isEdit ? 'update' : 'create';
 
-      // Vuelve al listado
+      // 👇 ESCRITURA SIN PREFLIGHT (POST + text/plain) a través de writeSheet
+      await writeSheet(SHEET_NAME, action, { row: rowToSend });
+
+      alert(isEdit ? t('Updated successfully.', 'Actualizado correctamente.')
+                   : t('Created successfully.', 'Creado correctamente.'));
+
+      // Vuelve al listado o al detalle; aquí te llevo al listado:
       navigate('/tender-management');
     } catch (err) {
       console.error('Save error:', err);

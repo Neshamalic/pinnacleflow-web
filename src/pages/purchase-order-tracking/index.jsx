@@ -1,61 +1,38 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+
 import Header from '../../components/ui/Header';
 import Breadcrumb from '../../components/ui/Breadcrumb';
 import Button from '../../components/ui/Button';
 import Icon from '../../components/AppIcon';
 
-// Componentes de esta página
 import OrderSummaryCards from './components/OrderSummaryCards';
 import OrderFilters from './components/OrderFilters';
 import OrdersTable from './components/OrdersTable';
 
-// Google Sheets
-import { fetchGoogleSheet } from '../../lib/googleSheet';
+import { fetchGoogleSheet, writeSheet } from '../../lib/googleSheet';
 import { SHEET_ID } from '../../lib/sheetsConfig';
 
-const PurchaseOrderTracking = () => {
-  const [currentLanguage, setCurrentLanguage] = useState('en');
+const SHEET_ORDERS = 'purchase_orders';
+const SHEET_ITEMS  = 'purchase_order_items';
 
+const PurchaseOrderTracking = () => {
+  const navigate = useNavigate();
+
+  const [currentLanguage, setCurrentLanguage] = useState('en');
   const [filters, setFilters] = useState({
     search: '',
     manufacturingStatus: '',
     qcStatus: '',
     transportType: '',
     dateRange: '',
-    productCategory: '',
+    productCategory: ''
   });
 
   const [orders, setOrders] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ---- helpers de fecha/estado ----
-  const toDate = (v) => {
-    if (!v) return null;
-    // acepta "YYYY-MM-DD", "DD-MM-YYYY", Date, etc.
-    const try1 = new Date(v);
-    if (!isNaN(try1)) return try1;
-
-    // intento con DD-MM-YYYY
-    const m = String(v).match(/^(\d{2})[-/](\d{2})[-/](\d{4})$/);
-    if (m) {
-      const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
-      if (!isNaN(d)) return d;
-    }
-    return null;
-  };
-
-  // normaliza estados a buckets de resumen
-  const normalizeStatus = (s) => {
-    const x = String(s || '').toLowerCase();
-    if (/arriv|deliv|received/.test(x)) return 'arrived';
-    if (/ship|transit|dispat/.test(x)) return 'shipped';
-    if (/ready|complete/.test(x)) return 'ready';
-    if (/process|manuf|prod|open|pend/.test(x)) return 'in_process';
-    return 'other';
-  };
-
-  // ---- idioma ----
   useEffect(() => {
     const savedLanguage = localStorage.getItem('language') || 'en';
     setCurrentLanguage(savedLanguage);
@@ -68,15 +45,15 @@ const PurchaseOrderTracking = () => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // ---- carga de datos desde Google Sheets ----
+  // Carga purchase_orders + purchase_order_items desde Google Sheets
   useEffect(() => {
     async function load() {
       try {
         setLoading(true);
 
         const [po, poi] = await Promise.all([
-          fetchGoogleSheet({ sheetId: SHEET_ID, sheetName: 'purchase_orders' }),
-          fetchGoogleSheet({ sheetId: SHEET_ID, sheetName: 'purchase_order_items' }),
+          fetchGoogleSheet({ sheetId: SHEET_ID, sheetName: SHEET_ORDERS }),
+          fetchGoogleSheet({ sheetId: SHEET_ID, sheetName: SHEET_ITEMS }),
         ]);
 
         // indexar ítems por po_number
@@ -92,7 +69,8 @@ const PurchaseOrderTracking = () => {
           const its = itemsByPO[o?.po_number] || [];
           const totalQty = its.reduce((s, it) => s + (Number(it?.qty_ordered) || 0), 0);
           const totalValue = its.reduce(
-            (s, it) => s + (Number(it?.qty_ordered) || 0) * (Number(it?.unit_price) || 0),
+            (s, it) =>
+              s + (Number(it?.qty_ordered) || 0) * (Number(it?.unit_price) || 0),
             0
           );
 
@@ -104,13 +82,10 @@ const PurchaseOrderTracking = () => {
             orderDate: o?.order_date || '',
             incoterm: o?.incoterm || '',
             currency: o?.currency || 'CLP',
-            statusRaw: o?.status || 'open',
-            status: normalizeStatus(o?.status || 'open'),
-            transportType: o?.transport_type || '', // por si existe en tu sheet
-            qcStatus: o?.qc_status || '', // por si existe en tu sheet
+            status: o?.status || 'open',
             items: its, // [{ presentation_code, qty_ordered, unit_price, notes }, ...]
             totalQty,
-            totalValue,
+            totalValue
           };
         });
 
@@ -126,96 +101,75 @@ const PurchaseOrderTracking = () => {
     load();
   }, []);
 
-  // ---- filtros desde el panel lateral ----
-  const filteredOrders = useMemo(() => {
-    return orders.filter((o) => {
-      // texto libre
-      if (filters?.search) {
-        const q = String(filters.search).toLowerCase();
-        const hit =
-          o.poNumber?.toLowerCase().includes(q) ||
-          o.supplier?.toLowerCase().includes(q) ||
-          o.tenderNumber?.toLowerCase().includes(q);
-        if (!hit) return false;
-      }
-
-      // categoría de producto (la buscamos en notes de los ítems por ahora)
-      if (filters?.productCategory) {
-        const q = String(filters.productCategory).toLowerCase();
-        const hit = (o.items || []).some((it) =>
-          String(it?.notes || '').toLowerCase().includes(q)
-        );
-        if (!hit) return false;
-      }
-
-      // estado de fabricación (mapeado al bucket status)
-      if (filters?.manufacturingStatus) {
-        if (o.status !== filters.manufacturingStatus) return false;
-      }
-
-      // estado QC (si tu sheet lo trae)
-      if (filters?.qcStatus) {
-        if (String(o.qcStatus || '').toLowerCase() !== filters.qcStatus) return false;
-      }
-
-      // tipo de transporte (si tu sheet lo trae)
-      if (filters?.transportType) {
-        if (String(o.transportType || '').toLowerCase() !== filters.transportType) return false;
-      }
-
-      // rango de fechas simple sobre orderDate (se puede mejorar con un datepicker)
-      if (filters?.dateRange && Array.isArray(filters.dateRange) && filters.dateRange.length === 2) {
-        const d = toDate(o.orderDate);
-        const from = toDate(filters.dateRange[0]);
-        const to = toDate(filters.dateRange[1]);
-        if (d && from && to) {
-          if (d < from || d > to) return false;
-        }
-      }
-
-      return true;
-    });
-  }, [orders, filters]);
-
-  // ---- resumen para tarjetas (OrderSummaryCards) ----
-  const summary = useMemo(() => {
-    const total = filteredOrders.length;
-
-    const inProcess = filteredOrders.filter((o) => o.status === 'in_process').length;
-    const ready = filteredOrders.filter((o) => o.status === 'ready').length;
-    const shipped = filteredOrders.filter((o) => o.status === 'shipped').length;
-
-    // "Tiempo promedio": si no tienes fecha de llegada, mostramos
-    // la edad promedio de la orden (días desde orderDate a hoy)
-    const ages = filteredOrders
-      .map((o) => {
-        const d = toDate(o.orderDate);
-        return d ? (Date.now() - d.getTime()) / (1000 * 60 * 60 * 24) : null;
-      })
-      .filter((x) => x !== null);
-
-    const avgAgeDays = ages.length
-      ? Math.round((ages.reduce((a, b) => a + b, 0) / ages.length) * 10) / 10
-      : null;
-
-    return { total, inProcess, ready, shipped, avgAgeDays };
-  }, [filteredOrders]);
-
-  // ---- UI helpers ----
   const handleFiltersChange = (newFilters) => setFilters(newFilters);
 
   const handleExportData = () => {
     console.log('Exporting order data...', orders.length, 'orders');
   };
 
-  const handleCreateOrder = () => {
-    console.log('Creating new order...');
+  const goNew = () => navigate('/orders/new');
+  const goEdit = (poNumber) => navigate(`/orders/${encodeURIComponent(poNumber)}/edit`);
+
+  // Eliminar una OC + todos sus ítems
+  const handleDelete = async (row) => {
+    const tr = (en, es) => (currentLanguage === 'es' ? es : en);
+    const po = row?.poNumber;
+    if (!po) return;
+
+    const yes = window.confirm(
+      tr(
+        `Delete PO ${po} and ALL its items? This action cannot be undone.`,
+        `¿Eliminar la OC ${po} y TODOS sus ítems? Esta acción no se puede deshacer.`
+      )
+    );
+    if (!yes) return;
+
+    try {
+      // 1) Borra todos los items (uno por uno, usando las KEYS po_number + presentation_code)
+      const items = row?.items || [];
+      for (const it of items) {
+        await writeSheet(SHEET_ITEMS, 'delete', {
+          po_number: String(po),
+          presentation_code: String(it?.presentation_code || ''),
+        });
+      }
+
+      // 2) Borra la fila madre en purchase_orders (KEY: po_number)
+      await writeSheet(SHEET_ORDERS, 'delete', { po_number: String(po) });
+
+      // 3) Quita del estado
+      setOrders((prev) => prev.filter((o) => o.poNumber !== po));
+      alert(tr('Order deleted.', 'Orden eliminada.'));
+    } catch (err) {
+      console.error('Delete order error:', err);
+      alert(tr('Error deleting order: ', 'Error eliminando la orden: ') + (err?.message || err));
+    }
   };
+
+  // Filtrado básico
+  const filteredOrders = orders.filter((o) => {
+    if (filters?.search) {
+      const q = String(filters.search).toLowerCase();
+      const hit =
+        o.poNumber?.toLowerCase().includes(q) ||
+        o.supplier?.toLowerCase().includes(q) ||
+        o.tenderNumber?.toLowerCase().includes(q);
+      if (!hit) return false;
+    }
+    if (filters?.productCategory) {
+      const q = String(filters.productCategory).toLowerCase();
+      const hit = (o.items || []).some((it) =>
+        String(it?.notes || '').toLowerCase().includes(q)
+      );
+      if (!hit) return false;
+    }
+    return true;
+  });
 
   const lastUpdatedLabel = lastUpdated
     ? new Intl.DateTimeFormat(currentLanguage === 'es' ? 'es-CL' : 'en-US', {
         hour: '2-digit',
-        minute: '2-digit',
+        minute: '2-digit'
       }).format(lastUpdated)
     : null;
 
@@ -252,7 +206,7 @@ const PurchaseOrderTracking = () => {
                 </Button>
                 <Button
                   variant="default"
-                  onClick={handleCreateOrder}
+                  onClick={goNew}
                   iconName="Plus"
                   iconPosition="left"
                 >
@@ -263,9 +217,7 @@ const PurchaseOrderTracking = () => {
           </div>
 
           {/* Summary Cards */}
-          {/* Si tu componente OrderSummaryCards acepta props de datos,
-             le pasamos "summary". Si no, simplemente lo ignorará. */}
-          <OrderSummaryCards currentLanguage={currentLanguage} summary={summary} />
+          <OrderSummaryCards currentLanguage={currentLanguage} />
 
           {/* Filters */}
           <OrderFilters
@@ -291,9 +243,11 @@ const PurchaseOrderTracking = () => {
 
             <OrdersTable
               currentLanguage={currentLanguage}
-              filters={filters}
               loading={loading}
               orders={filteredOrders}
+              onView={(row) => navigate(`/orders/${encodeURIComponent(row.poNumber)}/edit`)} // “Ver/Editar”
+              onEdit={(row) => goEdit(row.poNumber)}
+              onDelete={handleDelete}
             />
           </div>
         </div>
@@ -303,3 +257,4 @@ const PurchaseOrderTracking = () => {
 };
 
 export default PurchaseOrderTracking;
+

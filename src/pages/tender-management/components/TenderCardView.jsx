@@ -9,9 +9,9 @@ const TenderCardView = ({
   onTenderSelect,
   onTenderView,
   onTenderEdit,
-  onTenderDelete, // <- nuevo opcional
+  onTenderDelete, // opcional
 }) => {
-  const t = (en, es) => (currentLanguage === 'es' ? es : en);
+  const tr = (en, es) => (currentLanguage === 'es' ? es : en);
 
   const fmtCur = (v, cur) => {
     const n = Number(v || 0);
@@ -35,45 +35,47 @@ const TenderCardView = ({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-      {tenders.map((t) => {
-        const checked = selectedTenders.includes(t.id);
-        const coveragePct = Math.max(0, Math.min(100, Number(t.stockCoverage || 0)));
+      {tenders.map((row) => {
+        const checked = selectedTenders.includes(row.id);
+        const coveragePct = Math.max(0, Math.min(100, Number(row.stockCoverage || 0)));
 
         return (
-          <div key={t.id} className="bg-card rounded-lg border border-border p-4 hover:shadow-sm transition">
+          <div key={row.id} className="bg-card rounded-lg border border-border p-4 hover:shadow-sm transition">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
                   className="accent-primary mt-0.5"
                   checked={checked}
-                  onChange={() => onTenderSelect?.(t.id)}
+                  onChange={() => onTenderSelect?.(row.id)}
                 />
-                <h4 className="font-semibold text-foreground">{t.tenderId}</h4>
+                <h4 className="font-semibold text-foreground">{row.tenderId}</h4>
               </div>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                t.isOverdue ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'
-              }`}>
-                {t.isOverdue ? t('Overdue', 'Atrasada') : t('On Track', 'En Curso')}
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full ${
+                  row.isOverdue ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'
+                }`}
+              >
+                {row.isOverdue ? tr('Overdue', 'Atrasada') : tr('On Track', 'En Curso')}
               </span>
             </div>
 
             <div className="mt-3 space-y-2 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">{t('Products', 'Productos')}</span>
-                <span className="text-foreground font-medium">{t.productsCount || 0}</span>
+                <span className="text-muted-foreground">{tr('Products', 'Productos')}</span>
+                <span className="text-foreground font-medium">{row.productsCount || 0}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">{t('Total Value', 'Valor Total')}</span>
-                <span className="text-foreground font-medium">{fmtCur(t.totalValue, t.currency)}</span>
+                <span className="text-muted-foreground">{tr('Total Value', 'Valor Total')}</span>
+                <span className="text-foreground font-medium">{fmtCur(row.totalValue, row.currency)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">{t('First Delivery', 'Prim. Entrega')}</span>
-                <span className="text-foreground">{fmtDate(t.createdDate)}</span>
+                <span className="text-muted-foreground">{tr('First Delivery', 'Prim. Entrega')}</span>
+                <span className="text-foreground">{fmtDate(row.createdDate)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">{t('Last Delivery', 'Últ. Entrega')}</span>
-                <span className="text-foreground">{fmtDate(t.deliveryDate)}</span>
+                <span className="text-muted-foreground">{tr('Last Delivery', 'Últ. Entrega')}</span>
+                <span className="text-foreground">{fmtDate(row.deliveryDate)}</span>
               </div>
 
               <div className="pt-2">
@@ -84,27 +86,27 @@ const TenderCardView = ({
                   />
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  {t('Coverage', 'Cobertura')}: {coveragePct}%
+                  {tr('Coverage', 'Cobertura')}: {coveragePct}%
                 </div>
               </div>
             </div>
 
             <div className="mt-4 flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => onTenderView?.(t.id)} iconName="Eye">
-                {t('View', 'Ver')}
+              <Button variant="outline" size="sm" onClick={() => onTenderView?.(row.id)} iconName="Eye">
+                {tr('View', 'Ver')}
               </Button>
-              <Button variant="outline" size="sm" onClick={() => onTenderEdit?.(t.id)} iconName="Edit">
-                {t('Edit', 'Editar')}
+              <Button variant="outline" size="sm" onClick={() => onTenderEdit?.(row.id)} iconName="Edit">
+                {tr('Edit', 'Editar')}
               </Button>
               {onTenderDelete && (
                 <Button
                   variant="ghost"
                   size="sm"
                   className="text-red-600 hover:text-red-700"
-                  onClick={() => onTenderDelete(t)}
+                  onClick={() => onTenderDelete(row)}
                   iconName="Trash2"
                 >
-                  {t('Delete', 'Eliminar')}
+                  {tr('Delete', 'Eliminar')}
                 </Button>
               )}
             </div>
@@ -114,7 +116,7 @@ const TenderCardView = ({
 
       {tenders.length === 0 && (
         <div className="col-span-full text-center text-muted-foreground py-8">
-          {t('No tenders found', 'No hay licitaciones')}
+          {tr('No tenders found', 'No hay licitaciones')}
         </div>
       )}
     </div>

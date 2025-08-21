@@ -1,4 +1,4 @@
-// src/pages/tenders/TenderForm.jsx
+// src/pages/tender-management/TenderForm.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -15,15 +15,17 @@ const SHEET_NAME = 'tender_items';
 
 const TenderForm = () => {
   const navigate = useNavigate();
-  const { tenderId } = useParams();
+  const { tenderId } = useParams(); // en /new no viene; en /:tenderId/edit sí
   const isEdit = Boolean(tenderId);
 
   const [lang, setLang] = useState('en');
   const [loading, setLoading] = useState(true);
 
+  // Para editar: listado de filas del tender y dropdown de presentation_code
   const [existingRows, setExistingRows] = useState([]);
-  const [selectedPC, setSelectedPC] = useState('');
+  const [selectedPC, setSelectedPC] = useState(''); // presentation_code a editar
 
+  // Form
   const [form, setForm] = useState({
     tender_number: '',
     presentation_code: '',
@@ -41,6 +43,7 @@ const TenderForm = () => {
     setLang(saved);
   }, []);
 
+  // Carga para EDIT: trae filas del tender y preselecciona si hay solo una
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -56,9 +59,11 @@ const TenderForm = () => {
             setSelectedPC(rows[0]?.presentation_code || '');
             hydrateForm(rows[0]);
           } else {
+            // sólo setea tender_number y espera a que elijas el PC en el select
             setForm((f) => ({ ...f, tender_number: tenderId }));
           }
         } else {
+          // NEW
           setExistingRows([]);
           setForm({
             tender_number: '',
@@ -100,13 +105,18 @@ const TenderForm = () => {
       awarded_qty: row?.awarded_qty || '',
       currency: row?.currency || 'CLP',
       unit_price: row?.unit_price || '',
-      first_delivery_date: row?.first_delivery_date ? toYMD(row?.first_delivery_date) : '',
-      last_delivery_date: row?.last_delivery_date ? toYMD(row?.last_delivery_date) : '',
+      first_delivery_date: row?.first_delivery_date
+        ? toYMD(row?.first_delivery_date)
+        : '',
+      last_delivery_date: row?.last_delivery_date
+        ? toYMD(row?.last_delivery_date)
+        : '',
       notes: row?.notes || '',
     });
   }
 
   function toYMD(d) {
+    // convierte date o string ISO a 'YYYY-MM-DD' para <input type="date">
     const date = new Date(d);
     if (isNaN(date)) return '';
     const y = date.getFullYear();
@@ -119,11 +129,13 @@ const TenderForm = () => {
     setForm((f) => ({ ...f, [field]: value }));
   }
 
+  // Cuando en EDIT eliges un presentation_code del tender
   function onSelectPC(pc) {
     setSelectedPC(pc);
     const row = existingRows.find((r) => String(r?.presentation_code) === String(pc));
     if (row) hydrateForm(row);
     else {
+      // Si limpias la selección, deja sólo el tender_number
       setForm((f) => ({
         ...f,
         tender_number: tenderId || '',
@@ -142,6 +154,7 @@ const TenderForm = () => {
   async function onSubmit(e) {
     e.preventDefault();
     try {
+      // Validación mínima de llaves
       if (!form.tender_number || !form.presentation_code) {
         alert(
           t(
@@ -165,12 +178,16 @@ const TenderForm = () => {
       };
 
       if (isEdit) {
+        // PUT (upsert por llaves)
         await updateRow({ sheetName: SHEET_NAME, row: rowToSend });
         alert(t('Updated successfully.', 'Actualizado correctamente.'));
       } else {
+        // POST (nueva fila)
         await createRow({ sheetName: SHEET_NAME, row: rowToSend });
         alert(t('Created successfully.', 'Creado correctamente.'));
       }
+
+      // Vuelve al listado
       navigate('/tender-management');
     } catch (err) {
       console.error('Save error:', err);
@@ -178,24 +195,21 @@ const TenderForm = () => {
     }
   }
 
-  // NUEVO: borrar el ítem (llaves = tender_number + presentation_code)
+  // === NUEVO: eliminar (sólo en modo editar) ===
   async function onDelete() {
+    if (!isEdit) return;
     if (!form.tender_number || !form.presentation_code) {
-      alert(
-        t(
-          'To delete you must choose a presentation_code of this tender.',
-          'Para eliminar debes elegir un presentation_code de esta licitación.'
-        )
-      );
+      alert(t('Missing keys to delete.', 'Faltan llaves para borrar.'));
       return;
     }
     const ok = window.confirm(
       t(
-        `Delete item ${form.presentation_code} from tender ${form.tender_number}? This cannot be undone.`,
-        `¿Eliminar el ítem ${form.presentation_code} de la licitación ${form.tender_number}? Esta acción no se puede deshacer.`
+        `Delete item ${form.tender_number} / ${form.presentation_code}?`,
+        `¿Eliminar el ítem ${form.tender_number} / ${form.presentation_code}?`
       )
     );
     if (!ok) return;
+
     try {
       await deleteRow({
         sheetName: SHEET_NAME,
@@ -206,9 +220,9 @@ const TenderForm = () => {
       });
       alert(t('Deleted successfully.', 'Eliminado correctamente.'));
       navigate('/tender-management');
-    } catch (err) {
-      console.error('Delete error:', err);
-      alert(`${t('Delete error:', 'Error al eliminar:')} ${err?.message || err}`);
+    } catch (e) {
+      console.error(e);
+      alert(`${t('Delete error:', 'Error al eliminar:')} ${e?.message || e}`);
     }
   }
 
@@ -235,6 +249,7 @@ const TenderForm = () => {
             <div className="text-muted-foreground">{t('Loading…', 'Cargando…')}</div>
           ) : (
             <form onSubmit={onSubmit} className="bg-card rounded-lg border border-border p-6 space-y-4">
+              {/* Para editar: selector de ítem por presentation_code */}
               {isEdit && (
                 <Select
                   label={t('Item to edit (presentation_code)', 'Ítem a editar (presentation_code)')}
@@ -309,22 +324,20 @@ const TenderForm = () => {
                 />
               </div>
 
-              <div className="flex items-center justify-between gap-3">
-                {/* Botón de eliminación: solo en edición y con PC seleccionado */}
-                {isEdit && form.presentation_code ? (
-                  <Button type="button" variant="destructive" onClick={onDelete}>
+              <div className="flex items-center justify-end gap-3">
+                <Button variant="outline" type="button" onClick={() => navigate('/tender-management')}>
+                  {t('Cancel', 'Cancelar')}
+                </Button>
+
+                {isEdit && (
+                  <Button variant="outline" type="button" onClick={onDelete}>
                     {t('Delete', 'Eliminar')}
                   </Button>
-                ) : <div />}
+                )}
 
-                <div className="flex items-center gap-3">
-                  <Button variant="outline" type="button" onClick={() => navigate('/tender-management')}>
-                    {t('Cancel', 'Cancelar')}
-                  </Button>
-                  <Button type="submit">
-                    {isEdit ? t('Save Changes', 'Guardar Cambios') : t('Create', 'Crear')}
-                  </Button>
-                </div>
+                <Button type="submit">
+                  {isEdit ? t('Save Changes', 'Guardar Cambios') : t('Create', 'Crear')}
+                </Button>
               </div>
             </form>
           )}
@@ -335,5 +348,4 @@ const TenderForm = () => {
 };
 
 export default TenderForm;
-
 

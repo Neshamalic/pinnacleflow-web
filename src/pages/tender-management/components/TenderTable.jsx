@@ -1,5 +1,6 @@
 import React from 'react';
-import { fmtDate, fmtInt, fmtCurrency } from '../../../utils/format.js';
+import Icon from '../../../components/AppIcon';
+import Button from '../../../components/ui/Button';
 
 const TenderTable = ({
   currentLanguage = 'en',
@@ -9,106 +10,139 @@ const TenderTable = ({
   onTenderSelectAll,
   onTenderView,
   onTenderEdit,
-  sortConfig,
+  onTenderDelete, // <- nuevo
+  sortConfig = { key: 'createdDate', direction: 'desc' },
   onSort,
 }) => {
-  const lang = currentLanguage;
+  const t = (en, es) => (currentLanguage === 'es' ? es : en);
 
-  const allSelected =
-    selectedTenders?.length > 0 && selectedTenders?.length === (tenders?.length || 0);
+  const allSelected = tenders.length > 0 && selectedTenders.length === tenders.length;
 
   const th = (key, label) => (
     <th
-      className="px-4 py-3 cursor-pointer select-none"
-      onClick={() => onSort && onSort(key)}
-      title={lang === 'es' ? 'Ordenar' : 'Sort'}
+      className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer select-none"
+      onClick={() => onSort?.(key)}
     >
-      <div className="flex items-center gap-1">
-        <span>{label}</span>
-        {sortConfig?.key === key ? (
-          <span className="text-muted-foreground">
-            {sortConfig?.direction === 'asc' ? '▲' : '▼'}
-          </span>
-        ) : (
-          <span className="text-muted-foreground">↕</span>
+      <div className="inline-flex items-center gap-1">
+        {label}
+        {sortConfig?.key === key && (
+          <Icon name={sortConfig?.direction === 'asc' ? 'ArrowUp' : 'ArrowDown'} size={14} />
         )}
       </div>
     </th>
   );
 
-  if (!tenders?.length) {
-    return (
-      <div className="bg-card rounded-lg border border-border p-6">
-        {lang === 'es' ? 'No hay licitaciones.' : 'No tenders.'}
-      </div>
-    );
-  }
+  const fmtCur = (v, cur) => {
+    const n = Number(v || 0);
+    return new Intl.NumberFormat(currentLanguage === 'es' ? 'es-CL' : 'en-US', {
+      style: 'currency',
+      currency: cur || 'CLP',
+      maximumFractionDigits: 0,
+    }).format(n);
+  };
+
+  const fmtDate = (d) => {
+    if (!d) return '—';
+    const date = new Date(d);
+    if (isNaN(date)) return String(d);
+    return date.toLocaleDateString(currentLanguage === 'es' ? 'es-CL' : 'en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
 
   return (
-    <div className="overflow-x-auto bg-card rounded-lg border border-border">
-      <table className="min-w-full text-left">
-        <thead className="bg-muted/50 border-b border-border">
-          <tr className="text-sm text-muted-foreground">
+    <div className="bg-card rounded-lg border border-border overflow-hidden">
+      <table className="min-w-full">
+        <thead className="bg-muted/50">
+          <tr>
             <th className="px-4 py-3">
               <input
                 type="checkbox"
+                className="accent-primary"
                 checked={allSelected}
                 onChange={onTenderSelectAll}
-                aria-label={lang === 'es' ? 'Seleccionar todo' : 'Select all'}
               />
             </th>
-            {th('tenderId', lang === 'es' ? 'ID Licitación' : 'Tender ID')}
-            {th('title', lang === 'es' ? 'Título' : 'Title')}
-            {th('productsCount', lang === 'es' ? 'Productos' : 'Products')}
-            {th('status', lang === 'es' ? 'Estado' : 'Status')}
-            {th('deliveryDate', lang === 'es' ? 'F. Entrega' : 'Delivery Date')}
-            {th('stockCoverage', lang === 'es' ? 'Cobertura' : 'Stock Coverage')}
-            {th('totalValue', lang === 'es' ? 'Valor Total' : 'Total Value')}
-            <th className="px-4 py-3">{lang === 'es' ? 'Acciones' : 'Actions'}</th>
+            {th('tenderId', t('Tender', 'Licitación'))}
+            {th('productsCount', t('Products', 'Productos'))}
+            {th('totalValue', t('Total Value', 'Valor Total'))}
+            {th('createdDate', t('First Delivery', 'Primera Entrega'))}
+            {th('deliveryDate', t('Last Delivery', 'Última Entrega'))}
+            {th('stockCoverage', t('Coverage', 'Cobertura'))}
+            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              {t('Actions', 'Acciones')}
+            </th>
           </tr>
         </thead>
+
         <tbody className="divide-y divide-border">
+          {tenders.length === 0 && (
+            <tr>
+              <td colSpan={8} className="px-4 py-6 text-center text-muted-foreground">
+                {t('No tenders found', 'No hay licitaciones')}
+              </td>
+            </tr>
+          )}
+
           {tenders.map((t) => {
-            const checked = selectedTenders?.includes(t.id);
+            const checked = selectedTenders.includes(t.id);
+            const coveragePct = Math.max(0, Math.min(100, Number(t.stockCoverage || 0)));
+
             return (
-              <tr key={t.id} className="text-sm text-foreground hover:bg-muted/30">
+              <tr key={t.id} className="hover:bg-muted/50">
                 <td className="px-4 py-3">
                   <input
                     type="checkbox"
-                    checked={!!checked}
-                    onChange={() => onTenderSelect && onTenderSelect(t.id)}
-                    aria-label={lang === 'es' ? 'Seleccionar' : 'Select'}
+                    className="accent-primary"
+                    checked={checked}
+                    onChange={() => onTenderSelect?.(t.id)}
                   />
                 </td>
-                <td className="px-4 py-3 font-medium">{t.tenderId}</td>
-                <td className="px-4 py-3">{t.title}</td>
-                <td className="px-4 py-3">{fmtInt(t.productsCount, lang)}</td>
                 <td className="px-4 py-3">
-                  <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs">
-                    {t.status}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-foreground">{t.tenderId}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      t.isOverdue
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-emerald-100 text-emerald-700'
+                    }`}>
+                      {t.isOverdue ? t('Overdue', 'Atrasada') : t('On Track', 'En Curso')}
+                    </span>
+                  </div>
                 </td>
-                <td className="px-4 py-3">{fmtDate(t.deliveryDate, lang)}</td>
+                <td className="px-4 py-3 text-foreground">{t.productsCount || 0}</td>
+                <td className="px-4 py-3 text-foreground">{fmtCur(t.totalValue, t.currency)}</td>
+                <td className="px-4 py-3 text-muted-foreground">{fmtDate(t.createdDate)}</td>
+                <td className="px-4 py-3 text-muted-foreground">{fmtDate(t.deliveryDate)}</td>
                 <td className="px-4 py-3">
-                  {fmtInt(t.stockCoverage, lang)} {lang === 'es' ? 'días' : 'days'}
+                  <div className="w-32 bg-muted rounded-full h-2">
+                    <div
+                      className="h-2 rounded-full bg-primary"
+                      style={{ width: `${coveragePct}%` }}
+                    />
+                  </div>
                 </td>
                 <td className="px-4 py-3">
-                  {fmtCurrency(t.totalValue, t.currency || 'CLP', lang)}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <button
-                      className="text-primary hover:underline"
-                      onClick={() => onTenderView && onTenderView(t.id)}
-                    >
-                      {lang === 'es' ? 'Ver' : 'View'}
-                    </button>
-                    <button
-                      className="text-muted-foreground hover:text-foreground"
-                      onClick={() => onTenderEdit && onTenderEdit(t.id)}
-                    >
-                      {lang === 'es' ? 'Editar' : 'Edit'}
-                    </button>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => onTenderView?.(t.id)} iconName="Eye">
+                      {t('View', 'Ver')}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => onTenderEdit?.(t.id)} iconName="Edit">
+                      {t('Edit', 'Editar')}
+                    </Button>
+                    {onTenderDelete && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700"
+                        onClick={() => onTenderDelete(t)}
+                        iconName="Trash2"
+                      >
+                        {t('Delete', 'Eliminar')}
+                      </Button>
+                    )}
                   </div>
                 </td>
               </tr>

@@ -1,42 +1,41 @@
+// src/lib/googleSheet.js
 import { APPS_SCRIPT_URL } from './sheetsConfig';
 
-export async function fetchGoogleSheet({ sheetId, sheetName }) {
-  const url = `${APPS_SCRIPT_URL}?route=table&name=${encodeURIComponent(sheetName)}`;
-  const res = await fetch(url, { method: 'GET' });
-  const data = await res.json();
-  if (!data.ok) throw new Error(data.error || 'Failed to fetch sheet');
-  return data.rows || [];
+/**
+ * Lee una hoja usando el Apps Script (GET)
+ */
+export async function fetchSheetTable(name) {
+  const url = `${APPS_SCRIPT_URL}?route=table&name=${encodeURIComponent(name)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Network error');
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || 'Fetch failed');
+  return json.rows || [];
 }
 
-export async function createRow({ sheetName, row }) {
-  const res = await fetch(`${APPS_SCRIPT_URL}?name=${encodeURIComponent(sheetName)}`, {
+/**
+ * Escribe en la hoja usando el Apps Script (POST)
+ * action: 'create' | 'update' | 'delete'
+ * row: objeto con columnas (para create/update)
+ * where: objeto con llaves (para delete) — si no envías where, usa row
+ */
+export async function writeSheet({ name, action = 'create', row = {}, where = null }) {
+  const payload = {
+    route: 'write',
+    action,
+    name,
+    row,
+    ...(where ? { where } : {})
+  };
+
+  const res = await fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ row }),
+    body: JSON.stringify(payload)
   });
-  const data = await res.json();
-  if (!data.ok) throw new Error(data.error || 'Failed to create row');
-  return data.result;
-}
 
-export async function updateRow({ sheetName, row }) {
-  const res = await fetch(`${APPS_SCRIPT_URL}?name=${encodeURIComponent(sheetName)}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ row }),
-  });
-  const data = await res.json();
-  if (!data.ok) throw new Error(data.error || 'Failed to update row');
-  return data.updated || data.upserted;
-}
-
-export async function deleteRow({ sheetName, where }) {
-  const res = await fetch(`${APPS_SCRIPT_URL}?name=${encodeURIComponent(sheetName)}`, {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ where }),
-  });
-  const data = await res.json();
-  if (!data.ok) throw new Error(data.error || 'Failed to delete row');
-  return data.removed;
+  if (!res.ok) throw new Error('Network error');
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || 'Write failed');
+  return json;
 }

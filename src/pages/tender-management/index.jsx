@@ -1,4 +1,3 @@
-// src/pages/tender-management/index.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -11,7 +10,7 @@ import TenderTable from './components/TenderTable';
 import TenderCardView from './components/TenderCardView';
 import TenderDetailModal from './components/TenderDetailModal';
 
-import { fetchGoogleSheet } from '../../lib/googleSheet';
+import { fetchGoogleSheet, writeSheet } from '../../lib/googleSheet';
 import { SHEET_ID } from '../../lib/sheetsConfig';
 
 const TenderManagement = () => {
@@ -24,7 +23,7 @@ const TenderManagement = () => {
   const [filters, setFilters] = useState({});
   const [sortConfig, setSortConfig] = useState({ key: 'createdDate', direction: 'desc' });
 
-  // Solo por compatibilidad con el modal (la navegación ya va por rutas)
+  // mantenemos por compatibilidad con el modal
   const [selectedTender, setSelectedTender] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
@@ -35,7 +34,7 @@ const TenderManagement = () => {
     setCurrentLanguage(savedLanguage);
   }, []);
 
-  // Carga desde Google Sheets y agrupa por tender_number
+  // Carga y agrupa por tender_number
   useEffect(() => {
     async function load() {
       try {
@@ -69,12 +68,11 @@ const TenderManagement = () => {
 
           const deliveryDate = lastDate || firstDate;
           const createdDate  = firstDate || lastDate;
-
           const isOverdue = deliveryDate ? new Date(deliveryDate) < new Date() : false;
 
           return {
-            id: idx + 1,               // id interno para la tabla
-            tenderId: g.tenderId,      // ej: "621-299-LR25" -> usado en la URL
+            id: idx + 1,
+            tenderId: g.tenderId,
             title: g.tenderId,
             status: 'awarded',
             productsCount,
@@ -86,14 +84,8 @@ const TenderManagement = () => {
             createdDate,
             isOverdue,
             completionPercentage: 0,
-            tags: [],
-            description: '',
-            products: [],
-            deliverySchedule: [],
-            deliveryAddress: '',
-            transportMethod: '',
-            communications: [],
-            recommendations: [],
+            // guardamos items para poder borrar en cascada por presentation_code
+            _items: g.items,
           };
         });
 
@@ -106,23 +98,22 @@ const TenderManagement = () => {
     load();
   }, []);
 
-  // -------- Filtros --------
+  // Filtros
   const handleFiltersChange = (newFilters) => setFilters(newFilters);
 
-  // -------- Selección --------
+  // Selección
   const handleTenderSelect = (rowId) => {
     setSelectedTenders((prev) =>
       prev.includes(rowId) ? prev.filter((id) => id !== rowId) : [...prev, rowId]
     );
   };
-
   const handleTenderSelectAll = () => {
     setSelectedTenders(
       selectedTenders.length === (tenders?.length || 0) ? [] : (tenders || []).map((t) => t.id)
     );
   };
 
-  // -------- Orden --------
+  // Orden
   const handleSort = (key) => {
     setSortConfig((prev) => ({
       key,
@@ -130,32 +121,19 @@ const TenderManagement = () => {
     }));
   };
 
-  // Utilidad para aceptar id numérico, tenderId string u objeto
-  const resolveTender = (arg) => {
-    if (typeof arg === 'number') return (tenders || []).find((x) => x.id === arg) || null;
-    if (typeof arg === 'string') return (tenders || []).find((x) => x.tenderId === arg) || { tenderId: arg };
-    if (arg && typeof arg === 'object') return arg;
-    return null;
-  };
-
-  // -------- Navegación --------
-  const goToDetail = (rowOrTender) => {
-    const t = resolveTender(rowOrTender);
-    if (!t || !t.tenderId) return;
+  // Navegación
+  const goToDetail = (rowId) => {
+    const t = tenders.find((x) => x.id === rowId);
+    if (!t) return;
     navigate(`/tender-management/${encodeURIComponent(t.tenderId)}`);
   };
-
-  const goToEdit = (rowOrTender) => {
-    const t = resolveTender(rowOrTender);
-    if (!t || !t.tenderId) return;
+  const goToEdit = (rowId) => {
+    const t = tenders.find((x) => x.id === rowId);
+    if (!t) return;
     navigate(`/tender-management/${encodeURIComponent(t.tenderId)}/edit`);
   };
+  const goToNew = () => navigate('/tender-management/new');
 
-  const goToNew = () => {
-    navigate('/tender-management/new');
-  };
-
-  // Aliases esperados por Toolbar/Table/CardView
   const handleTenderView = goToDetail;
   const handleTenderEdit = goToEdit;
   const handleNewTender = goToNew;
@@ -164,11 +142,49 @@ const TenderManagement = () => {
     console.log('Export to:', format);
   };
 
-  const handleBulkAction = (action) => {
-    console.log('Bulk action:', action, 'on tenders:', selectedTenders);
+  // Delete a nivel “tender”: borra TODAS las filas de ese tender_number en tender_items
+  const handleTenderDelete = async (tenderRow) => {
+    const tn = tenderRow?.tenderId;
+    if (!tn) return;
+
+    const confirmText = currentLanguage === 'es'
+      ? `Vas a eliminar TODAS las filas de ${tn} en tender_items. ¿Confirmas?`
+      : `This will delete ALL items for ${tn} in tender_items. Confirm?`;
+
+    if (!window.confirm(confirmText)) return;
+
+    try {
+      const items = tenderRow?._items || [];
+      for (const it of items) {
+        const tender_number = String(it?.tender_number || '');
+        const presentation_code = String(it?.presentation_code || '');
+        if (!tender_number || !presentation_code) continue;
+
+        await writeSheet('tender_items', 'delete', {
+          where: { tender_number, presentation_code },
+        });
+      }
+      // refresca la lista en memoria
+      setTenders((prev) => prev.filter((x) => x.tenderId !== tn));
+      alert(currentLanguage === 'es' ? 'Eliminado correctamente.' : 'Deleted successfully.');
+    } catch (err) {
+      console.error('Delete error:', err);
+      alert((currentLanguage === 'es' ? 'Error al eliminar: ' : 'Delete error: ') + (err?.message || err));
+    }
   };
 
-  // -------- Filtro + Orden --------
+  const handleBulkAction = async (action) => {
+    if (action !== 'delete') return;
+    const rows = tenders.filter((t) => selectedTenders.includes(t.id));
+    for (const r of rows) {
+      // reutiliza el mismo delete por tender
+      // eslint-disable-next-line no-await-in-loop
+      await handleTenderDelete(r);
+    }
+    setSelectedTenders([]);
+  };
+
+  // Aplica filtros + orden
   const filteredAndSortedTenders = (tenders || [])
     .filter((tender) => {
       if (
@@ -179,40 +195,11 @@ const TenderManagement = () => {
         return false;
       }
       if (filters?.status && tender?.status !== filters?.status) return false;
-
-      if (filters?.packagingUnits) {
-        const hasMatchingPackagingUnits = tender?.products?.some(
-          (product) => String(product?.packagingUnits) === String(filters?.packagingUnits)
-        );
-        if (!hasMatchingPackagingUnits) return false;
-      }
-
-      if (filters?.stockCoverage) {
-        const coverage = tender?.stockCoverage;
-        switch (filters?.stockCoverage) {
-          case 'critical':
-            if (coverage >= 15) return false;
-            break;
-          case 'low':
-            if (coverage < 15 || coverage > 30) return false;
-            break;
-          case 'medium':
-            if (coverage < 30 || coverage > 60) return false;
-            break;
-          case 'high':
-            if (coverage <= 60) return false;
-            break;
-          default:
-            break;
-        }
-      }
       return true;
     })
     .sort((a, b) => {
       const aValue = a?.[sortConfig.key];
       const bValue = b?.[sortConfig.key];
-
-      // ordenar números/fechas/strings de forma robusta
       if (aValue == null && bValue != null) return 1;
       if (aValue != null && bValue == null) return -1;
       if (aValue == null && bValue == null) return 0;
@@ -230,7 +217,6 @@ const TenderManagement = () => {
       } else {
         comp = String(aValue).localeCompare(String(bValue));
       }
-
       return sortConfig.direction === 'asc' ? comp : -comp;
     });
 
@@ -266,9 +252,10 @@ const TenderManagement = () => {
               totalCount={filteredAndSortedTenders.length}
               viewMode={viewMode}
               onViewModeChange={setViewMode}
-              onNewTender={handleNewTender}  // -> /tender-management/new
+              onNewTender={handleNewTender}
               onExport={handleExport}
               onBulkAction={handleBulkAction}
+              currentLanguage={currentLanguage}
             />
 
             {viewMode === 'table' ? (
@@ -278,8 +265,9 @@ const TenderManagement = () => {
                 selectedTenders={selectedTenders}
                 onTenderSelect={handleTenderSelect}
                 onTenderSelectAll={handleTenderSelectAll}
-                onTenderView={handleTenderView}   // -> /tender-management/:tenderId
-                onTenderEdit={handleTenderEdit}   // -> /tender-management/:tenderId/edit
+                onTenderView={handleTenderView}
+                onTenderEdit={handleTenderEdit}
+                onTenderDelete={handleTenderDelete}  // <- NUEVO
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />
@@ -289,15 +277,16 @@ const TenderManagement = () => {
                 tenders={filteredAndSortedTenders}
                 selectedTenders={selectedTenders}
                 onTenderSelect={handleTenderSelect}
-                onTenderView={handleTenderView}   // -> /tender-management/:tenderId
-                onTenderEdit={handleTenderEdit}   // -> /tender-management/:tenderId/edit
+                onTenderView={handleTenderView}
+                onTenderEdit={handleTenderEdit}
+                onTenderDelete={handleTenderDelete}  // <- NUEVO
               />
             )}
           </div>
         </div>
       </div>
 
-      {/* Modal sin uso en la navegación nueva; se mantiene por compatibilidad */}
+      {/* Modal legado (sin uso) */}
       <TenderDetailModal
         tender={selectedTender}
         isOpen={isDetailModalOpen}
@@ -309,4 +298,3 @@ const TenderManagement = () => {
 };
 
 export default TenderManagement;
-

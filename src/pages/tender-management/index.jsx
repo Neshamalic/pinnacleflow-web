@@ -1,4 +1,3 @@
-// src/pages/tender-management/index.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -24,8 +23,9 @@ const TenderManagement = () => {
   const [filters, setFilters] = useState({});
   const [sortConfig, setSortConfig] = useState({ key: 'createdDate', direction: 'desc' });
 
+  // estos quedan por compatibilidad con el modal
   const [selectedTender, setSelectedTender] = useState(null);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false); // lo dejamos por compatibilidad, aunque ahora navegamos
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const [tenders, setTenders] = useState([]);
 
@@ -72,8 +72,8 @@ const TenderManagement = () => {
           const isOverdue = deliveryDate ? new Date(deliveryDate) < new Date() : false;
 
           return {
-            id: idx + 1,               // id interno (numérico) para la tabla
-            tenderId: g.tenderId,      // ej: "621-299-LR25" -> lo usamos en la URL
+            id: idx + 1,               // id interno para la tabla
+            tenderId: g.tenderId,      // ej: "621-299-LR25" -> usado en la URL
             title: g.tenderId,
             status: 'awarded',
             productsCount,
@@ -117,7 +117,7 @@ const TenderManagement = () => {
 
   const handleTenderSelectAll = () => {
     setSelectedTenders(
-      selectedTenders.length === tenders.length ? [] : tenders.map((t) => t.id)
+      selectedTenders.length === (tenders?.length || 0) ? [] : (tenders || []).map((t) => t.id)
     );
   };
 
@@ -129,7 +129,7 @@ const TenderManagement = () => {
     }));
   };
 
-  // >>> NAVEGACIÓN <<<
+  // >>> NAVEGACIÓN (3.1 y 3.2) <<<
   const goToDetail = (rowId) => {
     const t = tenders.find((x) => x.id === rowId);
     if (!t) return;
@@ -146,13 +146,12 @@ const TenderManagement = () => {
     navigate('/tender-management/new');
   };
 
-  // (dejamos estas funciones por si alguna vista interna las llama)
+  // (se exponen con estos nombres porque así los esperan las tablas/toolbar)
   const handleTenderView = goToDetail;
   const handleTenderEdit = goToEdit;
   const handleNewTender = goToNew;
 
   const handleExport = (format) => {
-    // Aquí podrías generar CSV/XLSX; por ahora sólo deja el console si quieres
     console.log('Export to:', format);
   };
 
@@ -203,11 +202,28 @@ const TenderManagement = () => {
     .sort((a, b) => {
       const aValue = a?.[sortConfig.key];
       const bValue = b?.[sortConfig.key];
-      if (sortConfig.direction === 'asc') {
-        return aValue > bValue ? 1 : -1;
+
+      // ordenar números/fechas/strings de forma robusta
+      if (aValue == null && bValue != null) return 1;
+      if (aValue != null && bValue == null) return -1;
+      if (aValue == null && bValue == null) return 0;
+
+      let comp = 0;
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        comp = aValue - bValue;
+      } else if (
+        // fechas en string
+        typeof aValue === 'string' &&
+        typeof bValue === 'string' &&
+        /^\d{4}-\d{2}-\d{2}/.test(aValue) &&
+        /^\d{4}-\d{2}-\d{2}/.test(bValue)
+      ) {
+        comp = new Date(aValue).getTime() - new Date(bValue).getTime();
       } else {
-        return aValue < bValue ? 1 : -1;
+        comp = String(aValue).localeCompare(String(bValue));
       }
+
+      return sortConfig.direction === 'asc' ? comp : -comp;
     });
 
   return (
@@ -242,7 +258,7 @@ const TenderManagement = () => {
               totalCount={filteredAndSortedTenders.length}
               viewMode={viewMode}
               onViewModeChange={setViewMode}
-              onNewTender={handleNewTender}
+              onNewTender={handleNewTender}  // -> /tender-management/new
               onExport={handleExport}
               onBulkAction={handleBulkAction}
             />
@@ -254,8 +270,8 @@ const TenderManagement = () => {
                 selectedTenders={selectedTenders}
                 onTenderSelect={handleTenderSelect}
                 onTenderSelectAll={handleTenderSelectAll}
-                onTenderView={handleTenderView}   // <- ahora navega
-                onTenderEdit={handleTenderEdit}   // <- ahora navega
+                onTenderView={handleTenderView}   // -> /tender-management/:id
+                onTenderEdit={handleTenderEdit}   // -> /tender-management/:id/edit
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />
@@ -265,15 +281,15 @@ const TenderManagement = () => {
                 tenders={filteredAndSortedTenders}
                 selectedTenders={selectedTenders}
                 onTenderSelect={handleTenderSelect}
-                onTenderView={handleTenderView}   // <- ahora navega
-                onTenderEdit={handleTenderEdit}   // <- ahora navega
+                onTenderView={handleTenderView}   // -> /tender-management/:id
+                onTenderEdit={handleTenderEdit}   // -> /tender-management/:id/edit
               />
             )}
           </div>
         </div>
       </div>
 
-      {/* El modal puede quedar sin uso, lo conservamos por compatibilidad */}
+      {/* Modal sin uso en la navegación nueva; se mantiene por compatibilidad */}
       <TenderDetailModal
         tender={selectedTender}
         isOpen={isDetailModalOpen}
@@ -285,4 +301,3 @@ const TenderManagement = () => {
 };
 
 export default TenderManagement;
-

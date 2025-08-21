@@ -1,3 +1,4 @@
+// src/pages/tender-management/index.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -23,7 +24,7 @@ const TenderManagement = () => {
   const [filters, setFilters] = useState({});
   const [sortConfig, setSortConfig] = useState({ key: 'createdDate', direction: 'desc' });
 
-  // estos quedan por compatibilidad con el modal
+  // Solo por compatibilidad con el modal (la navegación ya va por rutas)
   const [selectedTender, setSelectedTender] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
@@ -105,10 +106,10 @@ const TenderManagement = () => {
     load();
   }, []);
 
-  // Filtros
+  // -------- Filtros --------
   const handleFiltersChange = (newFilters) => setFilters(newFilters);
 
-  // Selección
+  // -------- Selección --------
   const handleTenderSelect = (rowId) => {
     setSelectedTenders((prev) =>
       prev.includes(rowId) ? prev.filter((id) => id !== rowId) : [...prev, rowId]
@@ -121,7 +122,7 @@ const TenderManagement = () => {
     );
   };
 
-  // Orden
+  // -------- Orden --------
   const handleSort = (key) => {
     setSortConfig((prev) => ({
       key,
@@ -129,16 +130,24 @@ const TenderManagement = () => {
     }));
   };
 
-  // >>> NAVEGACIÓN (3.1 y 3.2) <<<
-  const goToDetail = (rowId) => {
-    const t = tenders.find((x) => x.id === rowId);
-    if (!t) return;
+  // Utilidad para aceptar id numérico, tenderId string u objeto
+  const resolveTender = (arg) => {
+    if (typeof arg === 'number') return (tenders || []).find((x) => x.id === arg) || null;
+    if (typeof arg === 'string') return (tenders || []).find((x) => x.tenderId === arg) || { tenderId: arg };
+    if (arg && typeof arg === 'object') return arg;
+    return null;
+  };
+
+  // -------- Navegación --------
+  const goToDetail = (rowOrTender) => {
+    const t = resolveTender(rowOrTender);
+    if (!t || !t.tenderId) return;
     navigate(`/tender-management/${encodeURIComponent(t.tenderId)}`);
   };
 
-  const goToEdit = (rowId) => {
-    const t = tenders.find((x) => x.id === rowId);
-    if (!t) return;
+  const goToEdit = (rowOrTender) => {
+    const t = resolveTender(rowOrTender);
+    if (!t || !t.tenderId) return;
     navigate(`/tender-management/${encodeURIComponent(t.tenderId)}/edit`);
   };
 
@@ -146,7 +155,7 @@ const TenderManagement = () => {
     navigate('/tender-management/new');
   };
 
-  // (se exponen con estos nombres porque así los esperan las tablas/toolbar)
+  // Aliases esperados por Toolbar/Table/CardView
   const handleTenderView = goToDetail;
   const handleTenderEdit = goToEdit;
   const handleNewTender = goToNew;
@@ -159,7 +168,7 @@ const TenderManagement = () => {
     console.log('Bulk action:', action, 'on tenders:', selectedTenders);
   };
 
-  // Aplicar filtros + orden
+  // -------- Filtro + Orden --------
   const filteredAndSortedTenders = (tenders || [])
     .filter((tender) => {
       if (
@@ -212,7 +221,6 @@ const TenderManagement = () => {
       if (typeof aValue === 'number' && typeof bValue === 'number') {
         comp = aValue - bValue;
       } else if (
-        // fechas en string
         typeof aValue === 'string' &&
         typeof bValue === 'string' &&
         /^\d{4}-\d{2}-\d{2}/.test(aValue) &&
@@ -270,8 +278,8 @@ const TenderManagement = () => {
                 selectedTenders={selectedTenders}
                 onTenderSelect={handleTenderSelect}
                 onTenderSelectAll={handleTenderSelectAll}
-                onTenderView={handleTenderView}   // -> /tender-management/:id
-                onTenderEdit={handleTenderEdit}   // -> /tender-management/:id/edit
+                onTenderView={handleTenderView}   // -> /tender-management/:tenderId
+                onTenderEdit={handleTenderEdit}   // -> /tender-management/:tenderId/edit
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />
@@ -281,8 +289,8 @@ const TenderManagement = () => {
                 tenders={filteredAndSortedTenders}
                 selectedTenders={selectedTenders}
                 onTenderSelect={handleTenderSelect}
-                onTenderView={handleTenderView}   // -> /tender-management/:id
-                onTenderEdit={handleTenderEdit}   // -> /tender-management/:id/edit
+                onTenderView={handleTenderView}   // -> /tender-management/:tenderId
+                onTenderEdit={handleTenderEdit}   // -> /tender-management/:tenderId/edit
               />
             )}
           </div>

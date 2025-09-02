@@ -150,14 +150,13 @@ export default function TenderManagement() {
 
     const out = [];
     for (const [id, items] of byTender) {
-      const agg = aggregateTenderRow(items, demandMap, 'min'); // cobertura tipo "bottleneck"
-      // título y status
-      agg.title = getTitle(items[0]);
-      agg.status = resolveTenderStatus(items);
+      const agg = aggregateTenderRow(items, demandMap, 'min'); // cobertura "bottleneck"
+      agg.title = getTitle(items[0]);              // título
+      agg.status = resolveTenderStatus(items);     // status normalizado
       out.push(agg);
     }
 
-    // ordenar por fecha de entrega asc (como Rocket)
+    // ordenar por fecha de entrega asc
     out.sort((a, b) => {
       const da = a.deliveryDate ? +a.deliveryDate : Infinity;
       const db = b.deliveryDate ? +b.deliveryDate : Infinity;
@@ -167,7 +166,7 @@ export default function TenderManagement() {
     return out;
   }, [tenderItems, demandMap]);
 
-  // métricas de tarjetas
+  // métricas
   const stats = useMemo(() => {
     const active = tenders.length;
     const awarded = tenders.filter(t => t.status === 'awarded').length;
@@ -175,11 +174,12 @@ export default function TenderManagement() {
     return { active, awarded, inDelivery };
   }, [tenders]);
 
-  // navegación (ajusta rutas si en tu router son distintas)
+  // navegación
   const handleNew = () => navigate('/tender-management/new');
   const handleView = (id) => navigate(`/tender-management/${encodeURIComponent(id)}`);
   const handleEdit = (id) => navigate(`/tender-management/${encodeURIComponent(id)}/edit`);
 
+  // ⬇️⬇️⬇️ EL WRAPPER ARRANCA COMO RECOMENDADO
   return (
     <div className="space-y-6">
       {/* encabezado */}
@@ -202,22 +202,22 @@ export default function TenderManagement() {
 
       {/* métricas */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="card p-4">
           <div className="text-sm text-slate-500">Active</div>
           <div className="text-2xl font-semibold mt-1">{loading ? '—' : stats.active}</div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="card p-4">
           <div className="text-sm text-slate-500">Awarded</div>
           <div className="text-2xl font-semibold mt-1">{loading ? '—' : stats.awarded}</div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="card p-4">
           <div className="text-sm text-slate-500">In Delivery</div>
           <div className="text-2xl font-semibold mt-1">{loading ? '—' : stats.inDelivery}</div>
         </div>
       </div>
 
       {/* tabla */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="table-container">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50 text-slate-600">

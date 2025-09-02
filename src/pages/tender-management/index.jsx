@@ -1,204 +1,270 @@
+// src/pages/tender-management/index.jsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
 import { fetchGoogleSheet } from '@/lib/googleSheet';
 
+// === Config ===
 const SHEET_NAME = 'tender_items';
 
-const columns = [
-  { key: 'tender_number', label: 'Tender #' },
-  { key: 'tender_name', label: 'Nombre' },
-  { key: 'country', label: 'País' },
-  { key: 'buyer', label: 'Comprador' },
-  { key: 'supplier_name', label: 'Proveedor' },
-  { key: 'presentation_code', label: 'Código' },
-  { key: 'product_name', label: 'Producto' },
-  { key: 'package_units', label: 'Pack' },
-  { key: 'tender_qty_units', label: 'Cant. Licitada' },
-  { key: 'tender_awarded_units', label: 'Cant. Adjudicada' },
-  { key: 'unit_price', label: 'Precio Unit.' },
-  { key: 'currency', label: 'Moneda' },
-  { key: 'delivery_location', label: 'Entrega' },
-  { key: 'incoterm', label: 'Incoterm' },
-  { key: 'award_year', label: 'Año' },
-  { key: 'status', label: 'Estado' },
-];
-
-function toNumber(n) {
-  if (n === null || n === undefined || n === '') return null;
-  const num = Number(String(n).toString().replace(/[^0-9.\-]/g, ''));
-  return Number.isFinite(num) ? num : null;
+// === Helpers muy defensivos para distintos encabezados ===
+function n(v) {
+  // convierte "CLP 1.234.567" o "1,234.56" a número
+  if (v == null || v === '') return 0;
+  const num = Number(String(v).replace(/[^\d.-]/g, ''));
+  return Number.isFinite(num) ? num : 0;
 }
-function fmtInt(n) {
-  const x = toNumber(n);
-  return x === null ? '—' : Math.round(x).toLocaleString();
-}
-function fmtCurr(n, currency = 'USD') {
-  const x = toNumber(n);
-  if (x === null) return '—';
+function fmtCLP(v) {
   try {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: currency || 'USD',
-      maximumFractionDigits: 2,
-    }).format(x);
+    return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(v || 0);
   } catch {
-    return x.toLocaleString();
+    return `CLP ${Math.round(v || 0).toLocaleString('es-CL')}`;
   }
+}
+function parseDateLoose(v) {
+  if (!v) return null;
+  if (v instanceof Date && !isNaN(v)) return v;
+  // acepta "2025-03-14", "03/14/2025", etc.
+  const try1 = new Date(v);
+  return isNaN(try1) ? null : try1;
+}
+function minDate(arr) {
+  const valid = arr.filter(Boolean);
+  if (!valid.length) return null;
+  return new Date(Math.min(...valid.map(d => d.getTime())));
+}
+function formatDate(d) {
+  if (!d) return '—';
+  return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }); // ej: Mar 14, 2025
+}
+function normalizeStatus(s) {
+  if (!s) return 'Draft';
+  s = String(s).toLowerCase();
+  if (s.includes('award')) return 'Awarded';
+  if (s.includes('deliver')) return 'In Delivery';
+  if (s.includes('submit')) return 'Submitted';
+  if (s.includes('reject')) return 'Rejected';
+  if (s.includes('draft')) return 'Draft';
+  // capitaliza la primera
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/**
+ * Agrupa filas de tender_items en una fila por licitación.
+ * Intenta leer los campos con varios nombres posibles para que funcione con tus headers actuales.
+ */
+function aggregateTenders(rows) {
+  const byId = new Map();
+
+  for (const r of rows) {
+    // claves tolerantes
+    const tenderId =
+      (r.tender_number ?? r.tender_id ?? r.tender ?? r['tender id'] ?? r['tender_number'])?.toString().trim();
+
+    if (!tenderId) continue;
+
+    const title =
+      r.tender_title ??
+      r.title ??
+      r['tender title'] ??
+      r['title'] ??
+      ''; // si no existe, muestra vacío (Rocket pone el "Title" de la licitación)
+
+    const status = normalizeStatus(r.tender_status ?? r.status ?? '');
+
+    // valores por ítem (se suman)
+    // probamos varias columnas: total_value, amount, value, net_value, etc.
+    const itemValue =
+      n(r.total_value) || n(r.value) || n(r.amount) || n(r.net_value) || 0;
+
+    // fechas candidatas a "Delivery Date" (usamos la más temprana)
+    const d1 = parseDateLoose(r.first_delivery ?? r.first_delivery_date ?? r.delivery_date ?? r['delivery date']);
+    const d2 = parseDateLoose(r['first delivery']);
+    const deliveryCandidate = d1 || d2 || null;
+
+    // producto/presentación para contar únicos
+    const pres =
+      (r.presentation_code ?? r.presentation ?? r['presentation code'] ?? r.product_code ?? r['product code'])?.toString();
+
+    let acc = byId.get(tenderId);
+    if (!acc) {
+      acc = {
+        tenderId,
+        title,
+        // mantenemos el último status no vacío, priorizando "Awarded" sobre otros
+        status: status || 'Draft',
+        productSet: new Set(),
+        deliveryDates: [],
+        totalValue: 0,
+        // si quieres: aquí podrías acumular cobertura usando tus hojas de demand/stock
+        stockDays: null,
+      };
+      byId.set(tenderId, acc);
+    }
+
+    // prioriza Awarded si aparece en alguna fila
+    if (acc.status !== 'Awarded' && status) {
+      acc.status = status;
+    }
+
+    if (pres) acc.productSet.add(pres);
+    if (deliveryCandidate) acc.deliveryDates.push(deliveryCandidate);
+    acc.totalValue += itemValue;
+  }
+
+  const out = [];
+  for (const acc of byId.values()) {
+    const earliest = minDate(acc.deliveryDates);
+    out.push({
+      tenderId: acc.tenderId,
+      title: acc.title || acc.tenderId, // fallback: muestra el id si no hay título
+      products: acc.productSet.size,
+      status: acc.status,
+      deliveryDate: earliest,
+      stockDays: acc.stockDays, // aún no calculamos cobertura real
+      totalValue: acc.totalValue,
+    });
+  }
+
+  // orden por Delivery Date asc (como Rocket suele ordenar por alguna columna)
+  out.sort((a, b) => {
+    const aa = a.deliveryDate ? a.deliveryDate.getTime() : Infinity;
+    const bb = b.deliveryDate ? b.deliveryDate.getTime() : Infinity;
+    return aa - bb;
+  });
+
+  return out;
+}
+
+function Badge({ kind = 'neutral', children }) {
+  const map = {
+    neutral: 'bg-gray-100 text-gray-700',
+    green: 'bg-green-100 text-green-700',
+    yellow: 'bg-yellow-100 text-yellow-700',
+    red: 'bg-red-100 text-red-700',
+    blue: 'bg-blue-100 text-blue-700',
+    purple: 'bg-purple-100 text-purple-700',
+  };
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${map[kind]}`}>
+      {children}
+    </span>
+  );
+}
+function statusBadge(status) {
+  const s = normalizeStatus(status);
+  if (s === 'Awarded') return <Badge kind="green">Awarded</Badge>;
+  if (s === 'In Delivery') return <Badge kind="yellow">In Delivery</Badge>;
+  if (s === 'Submitted') return <Badge kind="blue">Submitted</Badge>;
+  if (s === 'Rejected') return <Badge kind="red">Rejected</Badge>;
+  return <Badge>Draft</Badge>;
 }
 
 export default function TenderManagement() {
-  const navigate = useNavigate();
-  const [rows, setRows] = useState([]);
-  const [q, setQ] = useState('');
-  const [status, setStatus] = useState('all');
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState('');
+  const [items, setItems] = useState([]);
 
   useEffect(() => {
-    let mounted = true;
     (async () => {
       try {
-        setLoading(true);
-        const data = await fetchGoogleSheet({ sheetId: '', sheetName: SHEET_NAME });
-        if (mounted) setRows(Array.isArray(data) ? data : []);
+        const rows = await fetchGoogleSheet({ sheetId: '', sheetName: SHEET_NAME });
+        setItems(Array.isArray(rows) ? rows : []);
       } catch (e) {
-        if (mounted) setErr(String(e?.message || e));
+        console.error(e);
+        setItems([]);
       } finally {
-        if (mounted) setLoading(false);
+        setLoading(false);
       }
     })();
-    return () => (mounted = false);
   }, []);
 
-  const statuses = useMemo(() => {
-    const s = new Set();
-    rows.forEach(r => {
-      const v = String(r.status ?? '').trim();
-      if (v) s.add(v);
-    });
-    return ['all', ...Array.from(s)];
-  }, [rows]);
+  const tenders = useMemo(() => aggregateTenders(items), [items]);
 
-  const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return rows.filter(r => {
-      if (status !== 'all' && String(r.status ?? '').trim() !== status) return false;
-      if (!needle) return true;
-      // búsqueda simple sobre campos de texto más relevantes
-      const haystack = [
-        r.tender_number, r.tender_name, r.country, r.buyer, r.supplier_name,
-        r.presentation_code, r.product_name, r.delivery_location, r.incoterm, r.currency
-      ].map(v => String(v ?? '').toLowerCase()).join(' ');
-      return haystack.includes(needle);
-    });
-  }, [rows, q, status]);
+  // KPIs superiores (simples)
+  const total = tenders.length;
+  const awarded = tenders.filter(t => normalizeStatus(t.status) === 'Awarded').length;
+  const inDelivery = tenders.filter(t => normalizeStatus(t.status) === 'In Delivery').length;
 
   return (
-    <div className="min-h-screen w-full bg-neutral-50">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b">
-        <div className="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Tender Management</h1>
-            <p className="text-sm text-neutral-500">Listado maestro de items de licitación</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Buscar por #, nombre, proveedor, país…"
-              className="h-10 w-64 rounded-xl border px-3 outline-none focus:ring-2 focus:ring-black/10"
-            />
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="h-10 rounded-xl border px-3"
-            >
-              {statuses.map(s => (
-                <option key={s} value={s}>{s === 'all' ? 'Todos los estados' : s}</option>
-              ))}
-            </select>
-            <Link
-              to="/tender-management/new"
-              className="inline-flex h-10 items-center rounded-xl bg-black px-4 text-white hover:opacity-90"
-            >
-              + Nuevo
-            </Link>
-          </div>
+    <div className="px-6 py-6">
+      <div className="mb-6">
+        <div className="text-sm text-gray-500">Dashboard &gt; Tender Management</div>
+        <h1 className="text-2xl font-semibold mt-1">Tender Management</h1>
+        <p className="text-gray-500">Manage and oversee all CENABAST tenders from registration through delivery tracking.</p>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="rounded-lg border bg-white p-4">
+          <div className="text-xs text-gray-500 mb-1">Active</div>
+          <div className="text-2xl font-semibold">{total}</div>
+        </div>
+        <div className="rounded-lg border bg-white p-4">
+          <div className="text-xs text-gray-500 mb-1">Awarded</div>
+          <div className="text-2xl font-semibold">{awarded}</div>
+        </div>
+        <div className="rounded-lg border bg-white p-4">
+          <div className="text-xs text-gray-500 mb-1">In Delivery</div>
+          <div className="text-2xl font-semibold">{inDelivery}</div>
+        </div>
+        <div className="rounded-lg border bg-white p-4 flex items-center justify-end">
+          <button className="px-3 py-2 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-500">
+            + New Tender
+          </button>
         </div>
       </div>
 
-      {/* Body */}
-      <div className="mx-auto max-w-7xl px-4 py-6">
-        {err ? (
-          <div className="rounded-xl border bg-red-50 p-4 text-red-700">
-            Error: {err}
-          </div>
-        ) : loading ? (
-          <div className="rounded-xl border bg-white p-6">Cargando…</div>
-        ) : (
-          <div className="overflow-hidden rounded-2xl border bg-white">
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="bg-neutral-50 text-neutral-500">
-                  <tr>
-                    {columns.map(c => (
-                      <th key={c.key} className="whitespace-nowrap px-4 py-3 text-left font-medium">{c.label}</th>
-                    ))}
-                    <th className="px-4 py-3"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((r, idx) => {
-                    const currency = String(r.currency || 'USD').toUpperCase();
-                    return (
-                      <tr key={idx} className="border-t hover:bg-neutral-50/60">
-                        <td className="px-4 py-3 font-medium">{r.tender_number || '—'}</td>
-                        <td className="px-4 py-3">{r.tender_name || '—'}</td>
-                        <td className="px-4 py-3">{r.country || '—'}</td>
-                        <td className="px-4 py-3">{r.buyer || '—'}</td>
-                        <td className="px-4 py-3">{r.supplier_name || '—'}</td>
-                        <td className="px-4 py-3">{r.presentation_code || '—'}</td>
-                        <td className="px-4 py-3">{r.product_name || '—'}</td>
-                        <td className="px-4 py-3">{r.package_units || '—'}</td>
-                        <td className="px-4 py-3">{fmtInt(r.tender_qty_units)}</td>
-                        <td className="px-4 py-3">{fmtInt(r.tender_awarded_units)}</td>
-                        <td className="px-4 py-3">{fmtCurr(r.unit_price, currency)}</td>
-                        <td className="px-4 py-3">{currency}</td>
-                        <td className="px-4 py-3">{r.delivery_location || '—'}</td>
-                        <td className="px-4 py-3">{r.incoterm || '—'}</td>
-                        <td className="px-4 py-3">{r.award_year || '—'}</td>
-                        <td className="px-4 py-3">
-                          <span className="inline-flex rounded-full border px-2 py-0.5 text-xs">
-                            {r.status || '—'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => navigate(`/tender-management/${encodeURIComponent(r.tender_number || '')}`)}
-                            className="rounded-lg border px-3 py-1.5 hover:bg-neutral-50"
-                          >
-                            Ver
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {filtered.length === 0 && (
-                    <tr>
-                      <td colSpan={columns.length + 1} className="px-4 py-10 text-center text-neutral-500">
-                        No hay resultados con los filtros actuales.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex items-center justify-between border-t px-4 py-3 text-xs text-neutral-500">
-              <span>Total: {filtered.length.toLocaleString()} filas</span>
-            </div>
-          </div>
-        )}
+      {/* Tabla */}
+      <div className="rounded-lg border bg-white overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50 text-gray-600">
+              <tr>
+                <th className="text-left font-medium px-4 py-3">Tender ID</th>
+                <th className="text-left font-medium px-4 py-3">Title</th>
+                <th className="text-left font-medium px-4 py-3">Products</th>
+                <th className="text-left font-medium px-4 py-3">Status</th>
+                <th className="text-left font-medium px-4 py-3">Delivery Date</th>
+                <th className="text-left font-medium px-4 py-3">Stock Coverage</th>
+                <th className="text-left font-medium px-4 py-3">Total Value</th>
+                <th className="text-left font-medium px-4 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && (
+                <tr>
+                  <td colSpan={8} className="px-4 py-6 text-center text-gray-400">Loading…</td>
+                </tr>
+              )}
+              {!loading && tenders.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-4 py-6 text-center text-gray-400">No tenders</td>
+                </tr>
+              )}
+              {!loading && tenders.map(row => (
+                <tr key={row.tenderId} className="border-t">
+                  <td className="px-4 py-3 font-medium text-gray-900">{row.tenderId}</td>
+                  <td className="px-4 py-3 text-gray-700">{row.title}</td>
+                  <td className="px-4 py-3">{row.products || 0}</td>
+                  <td className="px-4 py-3">{statusBadge(row.status)}</td>
+                  <td className="px-4 py-3">{formatDate(row.deliveryDate)}</td>
+                  <td className="px-4 py-3">
+                    {/* De momento no calculamos cobertura real; deja un placeholder o “—” */}
+                    {row.stockDays ? <Badge kind={row.stockDays < 10 ? 'red' : row.stockDays < 20 ? 'yellow' : 'green'}>
+                      {row.stockDays} days
+                    </Badge> : '—'}
+                  </td>
+                  <td className="px-4 py-3">{fmtCLP(row.totalValue)}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3 text-indigo-600">
+                      <button className="hover:underline">View</button>
+                      <button className="hover:underline">Edit</button>
+                      <button className="text-gray-400 hover:text-gray-600">•••</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

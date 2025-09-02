@@ -2,12 +2,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { fetchGoogleSheet } from '@/lib/googleSheet';
 
-// === Config ===
-const SHEET_NAME = 'tender_items';
+// ============ Config ============
+// Hoja fuente de ítems de licitación (una fila por producto)
+const TENDER_ITEMS_SHEET = 'tender_items';
+// Hoja con stock y demanda mensual por presentación/producto
+const DEMAND_SHEET = 'demand';
 
-// === Helpers muy defensivos para distintos encabezados ===
+// ============ Utilidades ============
+// convierte "CLP 1.234.567" o "1,234.56" a número
 function n(v) {
-  // convierte "CLP 1.234.567" o "1,234.56" a número
   if (v == null || v === '') return 0;
   const num = Number(String(v).replace(/[^\d.-]/g, ''));
   return Number.isFinite(num) ? num : 0;
@@ -22,7 +25,6 @@ function fmtCLP(v) {
 function parseDateLoose(v) {
   if (!v) return null;
   if (v instanceof Date && !isNaN(v)) return v;
-  // acepta "2025-03-14", "03/14/2025", etc.
   const try1 = new Date(v);
   return isNaN(try1) ? null : try1;
 }
@@ -43,97 +45,10 @@ function normalizeStatus(s) {
   if (s.includes('submit')) return 'Submitted';
   if (s.includes('reject')) return 'Rejected';
   if (s.includes('draft')) return 'Draft';
-  // capitaliza la primera
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-/**
- * Agrupa filas de tender_items en una fila por licitación.
- * Intenta leer los campos con varios nombres posibles para que funcione con tus headers actuales.
- */
-function aggregateTenders(rows) {
-  const byId = new Map();
-
-  for (const r of rows) {
-    // claves tolerantes
-    const tenderId =
-      (r.tender_number ?? r.tender_id ?? r.tender ?? r['tender id'] ?? r['tender_number'])?.toString().trim();
-
-    if (!tenderId) continue;
-
-    const title =
-      r.tender_title ??
-      r.title ??
-      r['tender title'] ??
-      r['title'] ??
-      ''; // si no existe, muestra vacío (Rocket pone el "Title" de la licitación)
-
-    const status = normalizeStatus(r.tender_status ?? r.status ?? '');
-
-    // valores por ítem (se suman)
-    // probamos varias columnas: total_value, amount, value, net_value, etc.
-    const itemValue =
-      n(r.total_value) || n(r.value) || n(r.amount) || n(r.net_value) || 0;
-
-    // fechas candidatas a "Delivery Date" (usamos la más temprana)
-    const d1 = parseDateLoose(r.first_delivery ?? r.first_delivery_date ?? r.delivery_date ?? r['delivery date']);
-    const d2 = parseDateLoose(r['first delivery']);
-    const deliveryCandidate = d1 || d2 || null;
-
-    // producto/presentación para contar únicos
-    const pres =
-      (r.presentation_code ?? r.presentation ?? r['presentation code'] ?? r.product_code ?? r['product code'])?.toString();
-
-    let acc = byId.get(tenderId);
-    if (!acc) {
-      acc = {
-        tenderId,
-        title,
-        // mantenemos el último status no vacío, priorizando "Awarded" sobre otros
-        status: status || 'Draft',
-        productSet: new Set(),
-        deliveryDates: [],
-        totalValue: 0,
-        // si quieres: aquí podrías acumular cobertura usando tus hojas de demand/stock
-        stockDays: null,
-      };
-      byId.set(tenderId, acc);
-    }
-
-    // prioriza Awarded si aparece en alguna fila
-    if (acc.status !== 'Awarded' && status) {
-      acc.status = status;
-    }
-
-    if (pres) acc.productSet.add(pres);
-    if (deliveryCandidate) acc.deliveryDates.push(deliveryCandidate);
-    acc.totalValue += itemValue;
-  }
-
-  const out = [];
-  for (const acc of byId.values()) {
-    const earliest = minDate(acc.deliveryDates);
-    out.push({
-      tenderId: acc.tenderId,
-      title: acc.title || acc.tenderId, // fallback: muestra el id si no hay título
-      products: acc.productSet.size,
-      status: acc.status,
-      deliveryDate: earliest,
-      stockDays: acc.stockDays, // aún no calculamos cobertura real
-      totalValue: acc.totalValue,
-    });
-  }
-
-  // orden por Delivery Date asc (como Rocket suele ordenar por alguna columna)
-  out.sort((a, b) => {
-    const aa = a.deliveryDate ? a.deliveryDate.getTime() : Infinity;
-    const bb = b.deliveryDate ? b.deliveryDate.getTime() : Infinity;
-    return aa - bb;
-  });
-
-  return out;
-}
-
+// ========= Badge UI =========
 function Badge({ kind = 'neutral', children }) {
   const map = {
     neutral: 'bg-gray-100 text-gray-700',
@@ -157,28 +72,155 @@ function statusBadge(status) {
   if (s === 'Rejected') return <Badge kind="red">Rejected</Badge>;
   return <Badge>Draft</Badge>;
 }
+function coverageBadge(days) {
+  if (days == null || days === '') return '—';
+  if (days < 10) return <Badge kind="red">{Math.round(days)} days</Badge>;
+  if (days < 30) return <Badge kind="yellow">{Math.round(days)} days</Badge>;
+  return <Badge kind="green">{Math.round(days)} days</Badge>;
+}
 
+// ========= Índice de cobertura por presentación/producto =========
+/**
+ * Devuelve un diccionario: { presentation_code -> stock_coverage_days }
+ * rows puede tener encabezados alternativos (ver abajo).
+ */
+function buildCoverageIndex(rows) {
+  const index = {};
+
+  for (const r of rows || []) {
+    // 1) código de producto/presentación
+    const code =
+      (r.presentation_code ?? r.product_code ?? r.code ?? r.presentation ?? r['presentation code'] ?? r['product code'])?.toString().trim();
+    if (!code) continue;
+
+    // 2) stock actual
+    const stock = n(r.current_stock ?? r.stock ?? r.stock_units ?? r.current_qty);
+
+    // 3) demanda mensual
+    const demandMonthly = n(r.monthly_demand ?? r.demand ?? r.demand_units_month);
+    if (demandMonthly <= 0) {
+      // si no hay demanda, dejamos cobertura vacía
+      index[code] = null;
+      continue;
+    }
+    const daily = demandMonthly / 30;
+    const days = stock / (daily || 1);
+    index[code] = Number.isFinite(days) ? days : null;
+  }
+
+  return index;
+}
+
+// ========= Agregado por licitación =========
+/**
+ * rows: tender_items (una fila por producto)
+ * coverageIdx: { presentation_code -> days }
+ */
+function aggregateTenders(rows, coverageIdx) {
+  const byId = new Map();
+
+  for (const r of rows) {
+    const tenderId =
+      (r.tender_number ?? r.tender_id ?? r.tender ?? r['tender id'] ?? r['tender_number'])?.toString().trim();
+    if (!tenderId) continue;
+
+    const title =
+      r.tender_title ?? r.title ?? r['tender title'] ?? r['title'] ?? '';
+
+    const status = normalizeStatus(r.tender_status ?? r.status ?? '');
+
+    const itemValue = n(r.total_value) || n(r.value) || n(r.amount) || n(r.net_value) || 0;
+
+    const d1 = parseDateLoose(r.first_delivery ?? r.first_delivery_date ?? r.delivery_date ?? r['delivery date']);
+    const d2 = parseDateLoose(r['first delivery']);
+    const deliveryCandidate = d1 || d2 || null;
+
+    const pres =
+      (r.presentation_code ?? r.presentation ?? r['presentation code'] ?? r.product_code ?? r['product code'])?.toString();
+
+    let acc = byId.get(tenderId);
+    if (!acc) {
+      acc = {
+        tenderId,
+        title,
+        status: status || 'Draft',
+        productSet: new Set(),
+        deliveryDates: [],
+        totalValue: 0,
+        coverageDaysList: [], // guardamos la cobertura por producto para calcular la del tender
+      };
+      byId.set(tenderId, acc);
+    }
+
+    if (acc.status !== 'Awarded' && status) acc.status = status;
+    if (pres) {
+      acc.productSet.add(pres);
+      // si tenemos cobertura para ese producto, la añadimos
+      const days = coverageIdx ? coverageIdx[pres] : null;
+      if (days != null) acc.coverageDaysList.push(days);
+    }
+    if (deliveryCandidate) acc.deliveryDates.push(deliveryCandidate);
+    acc.totalValue += itemValue;
+  }
+
+  const out = [];
+  for (const acc of byId.values()) {
+    const earliest = minDate(acc.deliveryDates);
+    // Estrategia: cobertura del tender = MÍNIMO de las coberturas de sus productos (bottleneck)
+    let tenderCoverage = null;
+    if (acc.coverageDaysList.length) {
+      tenderCoverage = Math.min(...acc.coverageDaysList);
+    }
+
+    out.push({
+      tenderId: acc.tenderId,
+      title: acc.title || acc.tenderId,
+      products: acc.productSet.size,
+      status: acc.status,
+      deliveryDate: earliest,
+      stockDays: tenderCoverage,
+      totalValue: acc.totalValue,
+    });
+  }
+
+  out.sort((a, b) => {
+    const aa = a.deliveryDate ? a.deliveryDate.getTime() : Infinity;
+    const bb = b.deliveryDate ? b.deliveryDate.getTime() : Infinity;
+    return aa - bb;
+  });
+
+  return out;
+}
+
+// ========= Página =========
 export default function TenderManagement() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
+  const [demandRows, setDemandRows] = useState([]);
 
   useEffect(() => {
     (async () => {
       try {
-        const rows = await fetchGoogleSheet({ sheetId: '', sheetName: SHEET_NAME });
+        // Leemos ítems de licitación + demanda/stock en paralelo
+        const [rows, dem] = await Promise.all([
+          fetchGoogleSheet({ sheetName: TENDER_ITEMS_SHEET }),
+          fetchGoogleSheet({ sheetName: DEMAND_SHEET }),
+        ]);
         setItems(Array.isArray(rows) ? rows : []);
+        setDemandRows(Array.isArray(dem) ? dem : []);
       } catch (e) {
         console.error(e);
         setItems([]);
+        setDemandRows([]);
       } finally {
         setLoading(false);
       }
     })();
   }, []);
 
-  const tenders = useMemo(() => aggregateTenders(items), [items]);
+  const coverageIdx = useMemo(() => buildCoverageIndex(demandRows), [demandRows]);
+  const tenders = useMemo(() => aggregateTenders(items, coverageIdx), [items, coverageIdx]);
 
-  // KPIs superiores (simples)
   const total = tenders.length;
   const awarded = tenders.filter(t => normalizeStatus(t.status) === 'Awarded').length;
   const inDelivery = tenders.filter(t => normalizeStatus(t.status) === 'In Delivery').length;
@@ -246,12 +288,7 @@ export default function TenderManagement() {
                   <td className="px-4 py-3">{row.products || 0}</td>
                   <td className="px-4 py-3">{statusBadge(row.status)}</td>
                   <td className="px-4 py-3">{formatDate(row.deliveryDate)}</td>
-                  <td className="px-4 py-3">
-                    {/* De momento no calculamos cobertura real; deja un placeholder o “—” */}
-                    {row.stockDays ? <Badge kind={row.stockDays < 10 ? 'red' : row.stockDays < 20 ? 'yellow' : 'green'}>
-                      {row.stockDays} days
-                    </Badge> : '—'}
-                  </td>
+                  <td className="px-4 py-3">{coverageBadge(row.stockDays)}</td>
                   <td className="px-4 py-3">{fmtCLP(row.totalValue)}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3 text-indigo-600">

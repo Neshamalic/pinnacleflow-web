@@ -1,260 +1,205 @@
-// src/pages/tender-management/index.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchGoogleSheet } from '@/lib/googleSheet';
 
-// Utiles de formato
-const fmtCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
-const fmtDate = (s) => {
-  if (!s) return '—';
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }); // 03/19/2024
-};
+const SHEET_NAME = 'tender_items';
 
-// Mapeo de estilos de status (idéntico a Rocket)
-const STATUS_STYLE = {
-  Draft: { bg: '#F3F4F6', fg: '#4B5563', label: 'Draft' },            // gris
-  Submitted: { bg: '#E0EAFF', fg: '#1D4ED8', label: 'Submitted' },    // azul
-  Rejected: { bg: '#FDE2E2', fg: '#B91C1C', label: 'Rejected' },      // rojo
-  'In Delivery': { bg: '#FEF3C7', fg: '#92400E', label: 'In Delivery' }, // amarillo
-  Awarded: { bg: '#DCFCE7', fg: '#166534', label: 'Awarded' },        // verde
-};
+const columns = [
+  { key: 'tender_number', label: 'Tender #' },
+  { key: 'tender_name', label: 'Nombre' },
+  { key: 'country', label: 'País' },
+  { key: 'buyer', label: 'Comprador' },
+  { key: 'supplier_name', label: 'Proveedor' },
+  { key: 'presentation_code', label: 'Código' },
+  { key: 'product_name', label: 'Producto' },
+  { key: 'package_units', label: 'Pack' },
+  { key: 'tender_qty_units', label: 'Cant. Licitada' },
+  { key: 'tender_awarded_units', label: 'Cant. Adjudicada' },
+  { key: 'unit_price', label: 'Precio Unit.' },
+  { key: 'currency', label: 'Moneda' },
+  { key: 'delivery_location', label: 'Entrega' },
+  { key: 'incoterm', label: 'Incoterm' },
+  { key: 'award_year', label: 'Año' },
+  { key: 'status', label: 'Estado' },
+];
 
-// Colorea la "pill" de coverage por tramos (igual que Rocket)
-function coveragePill(days) {
-  const n = Number(days) || 0;
-  if (n <= 0) return { bg: '#F3F4F6', fg: '#4B5563', label: '—' };
-  if (n < 10) return { bg: '#FDE2E2', fg: '#B91C1C', label: `${n} days`, bar: '#EF4444' };        // rojo
-  if (n < 30) return { bg: '#FEF3C7', fg: '#92400E', label: `${n} days`, bar: '#F59E0B' };       // amarillo
-  return { bg: '#DCFCE7', fg: '#166534', label: `${n} days`, bar: '#22C55E' };                   // verde
+function toNumber(n) {
+  if (n === null || n === undefined || n === '') return null;
+  const num = Number(String(n).toString().replace(/[^0-9.\-]/g, ''));
+  return Number.isFinite(num) ? num : null;
 }
-
-function StatusPill({ status }) {
-  const st = STATUS_STYLE[status] || STATUS_STYLE.Draft;
-  return (
-    <span
-      style={{
-        background: st.bg,
-        color: st.fg,
-        borderRadius: 20,
-        padding: '4px 10px',
-        fontSize: 12,
-        fontWeight: 600,
-      }}
-    >
-      {st.label}
-    </span>
-  );
+function fmtInt(n) {
+  const x = toNumber(n);
+  return x === null ? '—' : Math.round(x).toLocaleString();
 }
-
-function CoverageCell({ days }) {
-  const cfg = coveragePill(days);
-  // barrita pequeñita como en Rocket (~100px) con esquinas redondeadas
-  const pct = Math.max(0, Math.min(100, (Number(days) || 0) / 90 * 100)); // 90 días = 100%
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span
-        style={{
-          background: cfg.bg,
-          color: cfg.fg,
-          borderRadius: 999,
-          padding: '4px 10px',
-          fontSize: 12,
-          fontWeight: 600,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {cfg.label}
-      </span>
-      <div style={{ width: 120, height: 6, background: '#E5E7EB', borderRadius: 999, overflow: 'hidden' }}>
-        <div style={{ width: `${pct}%`, height: '100%', background: cfg.bar || '#9CA3AF' }} />
-      </div>
-    </div>
-  );
-}
-
-// Adaptador: normaliza lo que viene de Sheets a nuestro modelo de UI
-function normalizeRow(r) {
-  return {
-    id: r.tender_id || r.tender || r.id || '',
-    title: r.title || '',
-    createdAt: r.created_at || '',
-    products: Number(r.products_count || r.products || 0),
-    status: (r.status || 'Draft').trim(),
-    deliveryDate: r.delivery_date || '',
-    coverageDays: Number(r.stock_coverage_days || r.coverage_days || r.coverage || 0),
-    totalValue: Number(r.total_value_clp || r.total_value || 0),
-  };
+function fmtCurr(n, currency = 'USD') {
+  const x = toNumber(n);
+  if (x === null) return '—';
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: currency || 'USD',
+      maximumFractionDigits: 2,
+    }).format(x);
+  } catch {
+    return x.toLocaleString();
+  }
 }
 
 export default function TenderManagement() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState([]);
+  const [q, setQ] = useState('');
+  const [status, setStatus] = useState('all');
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
-  const navigate = useNavigate();
 
   useEffect(() => {
-    let alive = true;
+    let mounted = true;
     (async () => {
       try {
         setLoading(true);
-        const data = await fetchGoogleSheet({ sheetId: null, sheetName: 'tenders' });
-        if (!alive) return;
-        setRows((data || []).map(normalizeRow));
+        const data = await fetchGoogleSheet({ sheetId: '', sheetName: SHEET_NAME });
+        if (mounted) setRows(Array.isArray(data) ? data : []);
       } catch (e) {
-        setErr(e?.message || 'Error fetching tenders');
+        if (mounted) setErr(String(e?.message || e));
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     })();
-    return () => { alive = false; };
+    return () => (mounted = false);
   }, []);
 
-  const headerStyle = { color: '#6B7280', fontSize: 12, fontWeight: 600, textTransform: 'uppercase' };
-  const cellStyle = { fontSize: 14, color: '#111827' };
+  const statuses = useMemo(() => {
+    const s = new Set();
+    rows.forEach(r => {
+      const v = String(r.status ?? '').trim();
+      if (v) s.add(v);
+    });
+    return ['all', ...Array.from(s)];
+  }, [rows]);
+
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return rows.filter(r => {
+      if (status !== 'all' && String(r.status ?? '').trim() !== status) return false;
+      if (!needle) return true;
+      // búsqueda simple sobre campos de texto más relevantes
+      const haystack = [
+        r.tender_number, r.tender_name, r.country, r.buyer, r.supplier_name,
+        r.presentation_code, r.product_name, r.delivery_location, r.incoterm, r.currency
+      ].map(v => String(v ?? '').toLowerCase()).join(' ');
+      return haystack.includes(needle);
+    });
+  }, [rows, q, status]);
 
   return (
-    <div style={{ padding: 24 }}>
-      {/* Breadcrumb + título */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#6B7280', fontSize: 12, marginBottom: 8 }}>
-        <span>Dashboard</span>
-        <span>›</span>
-        <span style={{ color: '#111827', fontWeight: 600 }}>Tender Management</span>
-      </div>
-
-      <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>Tender Management</h1>
-      <p style={{ color: '#6B7280', marginBottom: 20 }}>
-        Manage and oversee all CENABAST tenders from registration through delivery tracking.
-      </p>
-
-      {/* Top KPIs (mock) */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-        <KpiCard label="Active" value={12} />
-        <KpiCard label="Awarded" value={8} />
-        <KpiCard label="In Delivery" value={5} />
-        <div style={{ flex: 1 }} />
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn-secondary" style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#fff' }}>
-            Export
-          </button>
-          <button
-            className="btn-primary"
-            style={{ padding: '8px 12px', borderRadius: 8, background: '#2563EB', color: '#fff', fontWeight: 600 }}
-            onClick={() => navigate('/tender-management/new')}
-          >
-            + New Tender
-          </button>
-        </div>
-      </div>
-
-      {/* Tabla */}
-      <div style={{ border: '1px solid #E5E7EB', borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-            <thead style={{ background: '#F9FAFB' }}>
-              <tr>
-                <th style={{ ...headerStyle, textAlign: 'left', padding: '12px 16px', width: 36 }}>
-                  <input type="checkbox" aria-label="select all" />
-                </th>
-                <th style={{ ...headerStyle, textAlign: 'left', padding: '12px 16px', width: 220 }}>Tender ID</th>
-                <th style={{ ...headerStyle, textAlign: 'left', padding: '12px 16px' }}>Title</th>
-                <th style={{ ...headerStyle, textAlign: 'left', padding: '12px 16px', width: 110 }}>Products</th>
-                <th style={{ ...headerStyle, textAlign: 'left', padding: '12px 16px', width: 140 }}>Status</th>
-                <th style={{ ...headerStyle, textAlign: 'left', padding: '12px 16px', width: 140 }}>Delivery Date</th>
-                <th style={{ ...headerStyle, textAlign: 'left', padding: '12px 16px', width: 230 }}>Stock Coverage</th>
-                <th style={{ ...headerStyle, textAlign: 'right', padding: '12px 16px', width: 160 }}>Total Value</th>
-                <th style={{ ...headerStyle, textAlign: 'center', padding: '12px 12px', width: 120 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr>
-                  <td colSpan={9} style={{ padding: 24, textAlign: 'center', color: '#6B7280' }}>Loading…</td>
-                </tr>
-              )}
-              {!!err && !loading && (
-                <tr>
-                  <td colSpan={9} style={{ padding: 24, textAlign: 'center', color: '#B91C1C' }}>{err}</td>
-                </tr>
-              )}
-              {!loading && !err && rows.length === 0 && (
-                <tr>
-                  <td colSpan={9} style={{ padding: 24, textAlign: 'center', color: '#6B7280' }}>No tenders found.</td>
-                </tr>
-              )}
-              {rows.map((r) => (
-                <tr key={r.id} style={{ borderTop: '1px solid #F3F4F6' }}>
-                  <td style={{ padding: '14px 16px' }}><input type="checkbox" aria-label={`select ${r.id}`} /></td>
-                  <td style={{ ...cellStyle, padding: '14px 16px', fontWeight: 600 }}>{r.id}</td>
-                  <td style={{ ...cellStyle, padding: '14px 16px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <span style={{ fontWeight: 600, color: '#111827' }}>{r.title || '—'}</span>
-                      {r.createdAt ? (
-                        <span style={{ color: '#6B7280', fontSize: 12 }}>Created: {fmtDate(r.createdAt)}</span>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td style={{ ...cellStyle, padding: '14px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontWeight: 700 }}>{r.products}</span>
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M11 2v2.07a7.002 7.002 0 014.95 4.95H18v2h-2.05a7.002 7.002 0 01-4.95 4.95V18h-2v-2.05A7.002 7.002 0 014.05 11H2v-2h2.05A7.002 7.002 0 019 4.05V2h2zm-1 4a5 5 0 100 10A5 5 0 0010 6z" fill="#9CA3AF"/></svg>
-                    </div>
-                  </td>
-                  <td style={{ ...cellStyle, padding: '14px 16px' }}>
-                    <StatusPill status={r.status} />
-                  </td>
-                  <td style={{ ...cellStyle, padding: '14px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#111827' }}>
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M6 2a2 2 0 00-2 2v1h12V4a2 2 0 00-2-2H6zM4 7v9a2 2 0 002 2h8a2 2 0 002-2V7H4z" fill="#9CA3AF"/></svg>
-                      {fmtDate(r.deliveryDate)}
-                    </div>
-                  </td>
-                  <td style={{ ...cellStyle, padding: '14px 16px' }}>
-                    <CoverageCell days={r.coverageDays} />
-                  </td>
-                  <td style={{ ...cellStyle, padding: '14px 16px', textAlign: 'right', fontWeight: 700 }}>
-                    {fmtCLP.format(r.totalValue || 0)}
-                  </td>
-                  <td style={{ padding: '8px 8px', textAlign: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-                      <Link to={`/tender-management/${encodeURIComponent(r.id)}`} title="View" aria-label="View">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 12a5 5 0 110-10 5 5 0 010 10z" fill="#6B7280"/></svg>
-                      </Link>
-                      <Link to={`/tender-management/${encodeURIComponent(r.id)}/edit`} title="Edit" aria-label="Edit">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" fill="#6B7280"/></svg>
-                      </Link>
-                      {/* Kebab igual que Rocket (aquí sin menú aún, puedes abrir un menu si quieres) */}
-                      <button
-                        title="More"
-                        aria-label="More"
-                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 6 }}
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 8a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z" fill="#6B7280"/></svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+    <div className="min-h-screen w-full bg-neutral-50">
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b">
+        <div className="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Tender Management</h1>
+            <p className="text-sm text-neutral-500">Listado maestro de items de licitación</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Buscar por #, nombre, proveedor, país…"
+              className="h-10 w-64 rounded-xl border px-3 outline-none focus:ring-2 focus:ring-black/10"
+            />
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="h-10 rounded-xl border px-3"
+            >
+              {statuses.map(s => (
+                <option key={s} value={s}>{s === 'all' ? 'Todos los estados' : s}</option>
               ))}
-            </tbody>
-          </table>
+            </select>
+            <Link
+              to="/tender-management/new"
+              className="inline-flex h-10 items-center rounded-xl bg-black px-4 text-white hover:opacity-90"
+            >
+              + Nuevo
+            </Link>
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
 
-function KpiCard({ label, value }) {
-  return (
-    <div style={{
-      minWidth: 160,
-      border: '1px solid #E5E7EB',
-      borderRadius: 12,
-      padding: 16,
-      background: '#fff'
-    }}>
-      <div style={{ color: '#6B7280', fontSize: 12, fontWeight: 600 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 800, marginTop: 6 }}>{value}</div>
+      {/* Body */}
+      <div className="mx-auto max-w-7xl px-4 py-6">
+        {err ? (
+          <div className="rounded-xl border bg-red-50 p-4 text-red-700">
+            Error: {err}
+          </div>
+        ) : loading ? (
+          <div className="rounded-xl border bg-white p-6">Cargando…</div>
+        ) : (
+          <div className="overflow-hidden rounded-2xl border bg-white">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-neutral-50 text-neutral-500">
+                  <tr>
+                    {columns.map(c => (
+                      <th key={c.key} className="whitespace-nowrap px-4 py-3 text-left font-medium">{c.label}</th>
+                    ))}
+                    <th className="px-4 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((r, idx) => {
+                    const currency = String(r.currency || 'USD').toUpperCase();
+                    return (
+                      <tr key={idx} className="border-t hover:bg-neutral-50/60">
+                        <td className="px-4 py-3 font-medium">{r.tender_number || '—'}</td>
+                        <td className="px-4 py-3">{r.tender_name || '—'}</td>
+                        <td className="px-4 py-3">{r.country || '—'}</td>
+                        <td className="px-4 py-3">{r.buyer || '—'}</td>
+                        <td className="px-4 py-3">{r.supplier_name || '—'}</td>
+                        <td className="px-4 py-3">{r.presentation_code || '—'}</td>
+                        <td className="px-4 py-3">{r.product_name || '—'}</td>
+                        <td className="px-4 py-3">{r.package_units || '—'}</td>
+                        <td className="px-4 py-3">{fmtInt(r.tender_qty_units)}</td>
+                        <td className="px-4 py-3">{fmtInt(r.tender_awarded_units)}</td>
+                        <td className="px-4 py-3">{fmtCurr(r.unit_price, currency)}</td>
+                        <td className="px-4 py-3">{currency}</td>
+                        <td className="px-4 py-3">{r.delivery_location || '—'}</td>
+                        <td className="px-4 py-3">{r.incoterm || '—'}</td>
+                        <td className="px-4 py-3">{r.award_year || '—'}</td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex rounded-full border px-2 py-0.5 text-xs">
+                            {r.status || '—'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => navigate(`/tender-management/${encodeURIComponent(r.tender_number || '')}`)}
+                            className="rounded-lg border px-3 py-1.5 hover:bg-neutral-50"
+                          >
+                            Ver
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={columns.length + 1} className="px-4 py-10 text-center text-neutral-500">
+                        No hay resultados con los filtros actuales.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between border-t px-4 py-3 text-xs text-neutral-500">
+              <span>Total: {filtered.length.toLocaleString()} filas</span>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

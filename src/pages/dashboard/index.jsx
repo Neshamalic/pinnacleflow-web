@@ -349,3 +349,11 @@ function TypeBadge({ type }) {
     </span>
   );
 }
+
+export default function Dashboard() {
+  return (
+    <div className="pf-card" style={{ padding:16 }}>
+      (Vista placeholder; solo para que la navegación funcione)
+    </div>
+  );
+}

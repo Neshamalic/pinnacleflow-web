@@ -1,17 +1,12 @@
-// src/index.jsx
 import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 
-// Estilos globales
+// Tus estilos base
 import "./styles/tailwind.css";
 import "./styles/index.css";
 
-const container = document.getElementById("root");
-const root = createRoot(container);
+// >>> Piel Rocket, debe ir al final para sobrescribir <<<
+import "./styles/rocket-skin.css";
 
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+createRoot(document.getElementById("root")).render(<App />);

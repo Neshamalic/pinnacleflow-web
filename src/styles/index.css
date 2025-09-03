@@ -1,4 +1,4 @@
-/* ============== Theme base (claro) ============== */
+4.2. Evita CSS global que rompa tablas revisalos por favor y dame los codigos completos corregidos: src/styles/index.css: /* ============== Theme base (claro) ============== */
 :root {
   --bg: #f8fafc;                /* fondo general */
   --card: #ffffff;              /* tarjetas y tablas */
@@ -170,3 +170,192 @@ body {
 .text-muted { color: var(--muted-foreground); }
 .divider-y > * + * { border-top: 1px solid var(--border); }
 .rounded-xl { border-radius: 1rem; }
+
+src/styles/tailwind.css: @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-background: #FAFBFC; /* gray-50 */
+    --color-foreground: #1E293B; /* slate-800 */
+    --color-card: #FFFFFF; /* white */
+    --color-card-foreground: #1E293B; /* slate-800 */
+    --color-popover: #FFFFFF; /* white */
+    --color-popover-foreground: #1E293B; /* slate-800 */
+    --color-primary: #1E40AF; /* blue-800 */
+    --color-primary-foreground: #FFFFFF; /* white */
+    --color-secondary: #64748B; /* slate-500 */
+    --color-secondary-foreground: #FFFFFF; /* white */
+    --color-muted: #F1F5F9; /* slate-100 */
+    --color-muted-foreground: #64748B; /* slate-500 */
+    --color-accent: #0EA5E9; /* sky-500 */
+    --color-accent-foreground: #FFFFFF; /* white */
+    --color-destructive: #DC2626; /* red-600 */
+    --color-destructive-foreground: #FFFFFF; /* white */
+    --color-border: #E2E8F0; /* slate-200 */
+    --color-input: #FFFFFF; /* white */
+    --color-ring: #1E40AF; /* blue-800 */
+    --color-success: #059669; /* emerald-600 */
+    --color-success-foreground: #FFFFFF; /* white */
+    --color-warning: #D97706; /* amber-600 */
+    --color-warning-foreground: #FFFFFF; /* white */
+    --color-error: #DC2626; /* red-600 */
+    --color-error-foreground: #FFFFFF; /* white */
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', sans-serif;
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer components {
+  .nav-tab {
+    @apply relative px-6 py-3 text-sm font-medium text-secondary transition-colors duration-200 ease-out hover:text-primary;
+  }
+
+  .nav-tab.active {
+    @apply text-primary;
+  }
+
+  .nav-tab.active::after {
+    @apply absolute bottom-0 left-0 right-0 h-0.5 bg-primary content-[''];
+  }
+
+  .notification-badge {
+    @apply absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-error text-xs font-medium text-error-foreground;
+  }
+
+  .breadcrumb-item {
+    @apply text-sm text-muted-foreground hover:text-foreground transition-colors duration-200;
+  }
+
+  .breadcrumb-separator {
+    @apply mx-2 text-muted-foreground;
+  }
+.mobile-nav-overlay  {
+    @apply fixed inset-0 z-50 backdrop-blur-sm;
+  }
+
+  .mobile-nav-content {
+    @apply fixed left-0 top-0 z-50 h-full w-4/5 max-w-sm bg-card shadow-lg transform transition-transform duration-300 ease-in-out;
+  }
+
+  .language-toggle {
+    @apply flex items-center space-x-2 px-3 py-2 text-sm font-medium text-secondary hover:text-primary transition-colors duration-200;
+  }
+}
+
+@layer utilities {
+  .shadow-soft {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .shadow-modal {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .transition-smooth {
+    transition: all 200ms ease-out;
+  }
+
+  .transition-layout {
+    transition: all 300ms ease-in-out;
+  }
+}
+
+
+src/styles/rocket-skin.css:  /* ===== Rocket Skin (muy ligera) ===== */
+
+/* Fuente y fondo de toda la app */
+:root {
+  --pf-bg: #f6f8fb;
+  --pf-card: #ffffff;
+  --pf-border: #e5e7eb;
+  --pf-muted: #64748b;
+  --pf-text: #0f172a;
+
+  --pf-green-50: #ecfdf5;  --pf-green-600: #16a34a;
+  --pf-yellow-50: #fefce8; --pf-yellow-700: #a16207;
+  --pf-red-50: #fef2f2;    --pf-red-600: #dc2626;
+  --pf-blue-50: #eff6ff;   --pf-blue-600: #2563eb;
+
+  --pf-radius: 12px;
+  --pf-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 10px 20px rgba(15, 23, 42, .03);
+}
+
+html, body, #root { height: 100%; }
+body { background: var(--pf-bg); color: var(--pf-text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+
+/* Contenedor de página */
+.pf-page { max-width: 1280px; margin: 0 auto; padding: 28px 24px 48px; }
+
+/* Tarjeta base */
+.pf-card {
+  background: var(--pf-card);
+  border: 1px solid var(--pf-border);
+  border-radius: var(--pf-radius);
+  box-shadow: var(--pf-shadow);
+}
+
+/* Header de página */
+.pf-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+.pf-header h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.01em; }
+.pf-breadcrumb { font-size: 12px; color: var(--pf-muted); margin-bottom: 4px; }
+
+/* Botón principal */
+.pf-btn-primary {
+  background: var(--pf-blue-600); color: #fff;
+  padding: 10px 14px; border-radius: 10px; font-weight: 600;
+}
+.pf-btn-primary:hover { filter: brightness(0.95); }
+
+/* Tarjetas de métricas */
+.pf-stats { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; margin-bottom: 18px; }
+.pf-stat { padding: 16px; }
+.pf-stat .label { color: var(--pf-muted); font-size: 12px; }
+.pf-stat .value { font-size: 24px; font-weight: 600; margin-top: 2px; }
+
+/* Tabla */
+.pf-table-wrap { overflow:auto; }
+table.pf-table { width:100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+.pf-table thead th {
+  text-align:left; background:#f8fafc; color:#475569;
+  padding: 12px 14px; font-weight: 600; border-bottom:1px solid var(--pf-border);
+}
+.pf-table tbody td {
+  padding: 12px 14px; border-bottom:1px solid var(--pf-border);
+  vertical-align: middle;
+}
+.pf-table tbody tr:hover { background:#fbfdff; }
+
+/* Badges/Pills */
+.pf-pill {
+  display:inline-flex; align-items:center; gap:6px;
+  border-radius: 999px; font-size: 12px; padding: 4px 10px; border:1px solid transparent;
+}
+.pf-pill.success { background: var(--pf-green-50); color: var(--pf-green-600); border-color:#bbf7d0; }
+.pf-pill.warning { background: var(--pf-yellow-50); color: var(--pf-yellow-700); border-color:#fde68a; }
+.pf-pill.danger  { background: var(--pf-red-50); color: var(--pf-red-600); border-color:#fecaca; }
+.pf-pill.info    { background: var(--pf-blue-50); color: var(--pf-blue-600); border-color:#bfdbfe; }
+.pf-pill.muted   { background:#f8fafc; color:#475569; border-color:var(--pf-border); }
+
+/* Columna Actions */
+.pf-actions { display:flex; gap:12px; }
+.pf-link { color:#0f172a; text-decoration: underline; }
+.pf-link:hover { text-decoration: none; }

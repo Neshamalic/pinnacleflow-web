@@ -124,6 +124,15 @@ const CommunicationsLog = () => {
       </main>
     </div>
   );
+
+  export default function Communications() {
+  return (
+    <div className="pf-card" style={{ padding:16 }}>
+      (Vista placeholder; solo para que la navegación funcione)
+    </div>
+  );
+}
+
 };
 
 export default CommunicationsLog;

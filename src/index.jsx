@@ -1,10 +1,17 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+
 import App from "./App";
 
-// Tus estilos base
-import "./styles/tailwind.css";
+// ⚠️ Solo este CSS (no importes index.css)
+import "./styles/rocket-skin.css";
 
-
-
-createRoot(document.getElementById("root")).render(<App />);
+const root = createRoot(document.getElementById("root"));
+root.render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </React.StrictMode>
+);

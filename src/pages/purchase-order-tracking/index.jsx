@@ -463,3 +463,11 @@ function mapOrders(poRows, itemsByPO) {
   });
 }
 
+export default function Orders() {
+  return (
+    <div className="pf-card" style={{ padding:16 }}>
+      (Vista placeholder; solo para que la navegación funcione)
+    </div>
+  );
+}
+

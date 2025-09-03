@@ -1,14 +1,7 @@
 // src/lib/googleSheet.js
-// Librería para LEER/ESCRIBIR usando tu Apps Script (sin preflight)
-// + utilidades de formato y agregación (demand, coverage, etc.)
+import { APP_SCRIPT_URL } from './sheetsConfig'; // deja tu URL aquí
 
-import { APP_SCRIPT_URL } from './sheetsConfig';
-
-/* ============================================================
- *  HTTP helpers (Apps Script)
- * ============================================================ */
-
-/** GET JSON simple (sin preflight extra) */
+/* ------------ Fetch básico ------------- */
 async function getJSON(url) {
   const res = await fetch(url, { method: 'GET' });
   if (!res.ok) {
@@ -18,239 +11,104 @@ async function getJSON(url) {
   return res.json();
 }
 
-/** LECTURA: tu Apps Script expone route=table&name=... */
-export async function fetchGoogleSheet({ sheetId, sheetName }) {
-  // sheetId se ignora; tu Apps Script ya conoce el Spreadsheet ID fijo.
+/* ---------- LECTURA: route=table&name=... en tu Apps Script ---------- */
+export async function fetchGoogleSheet({ sheetId = '', sheetName }) {
   const url = `${APP_SCRIPT_URL}?route=table&name=${encodeURIComponent(sheetName)}`;
   const json = await getJSON(url);
   if (!json?.ok) throw new Error(json?.error || 'Unknown error');
   return json.rows || [];
 }
 
-/**
- * ESCRITURA: POST + text/plain (sin preflight)
- * action: 'create' | 'update' | 'delete'
- * payload = { row }  ó  { where }
- */
-export async function writeSheet(name, action, payload) {
-  const url = `${APP_SCRIPT_URL}?name=${encodeURIComponent(name)}&action=${encodeURIComponent(
-    action
-  )}`;
+/* ================== Helpers de business ================== */
+const pick = (row, keys) => {
+  for (const k of keys) if (row[k] !== undefined && row[k] !== '') return row[k];
+  return undefined;
+};
 
-  const bodyObj = { ...(payload || {}), action }; // action también en el body
-  const res = await fetch(url, {
-    method: 'POST', // SIEMPRE POST
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // text/plain evita preflight
-    body: JSON.stringify(bodyObj),
-  });
+export const toNumber = (v) => {
+  if (v == null) return 0;
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  const cleaned = String(v).replace(/[^\d.-]/g, '').replace(/(\..*)\./g, '$1');
+  const num = Number(cleaned.replace(',', ''));
+  return Number.isFinite(num) ? num : 0;
+};
 
-  if (!res.ok) {
-    const txt = await res.text().catch(() => '');
-    throw new Error(`POST ${res.status}: ${txt || res.statusText}`);
-  }
+export const formatCLP = (n) =>
+  new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
+    .format(Number.isFinite(n) ? n : 0);
 
-  const json = await res.json().catch(async () => {
-    const t = await res.text();
-    throw new Error(`Respuesta no JSON: ${t}`);
-  });
-
-  if (!json?.ok) throw new Error(json?.error || 'Unknown error');
-  return json; // { ok:true, ... }
-}
-
-/* Wrappers convenientes para la UI */
-export async function createRow({ sheetName, row }) {
-  if (!sheetName) throw new Error('sheetName required');
-  if (!row || typeof row !== 'object') throw new Error('row object required');
-  return writeSheet(sheetName, 'create', { row });
-}
-
-export async function updateRow({ sheetName, row }) {
-  if (!sheetName) throw new Error('sheetName required');
-  if (!row || typeof row !== 'object') throw new Error('row object required');
-  return writeSheet(sheetName, 'update', { row });
-}
-
-export async function deleteRow({ sheetName, where }) {
-  if (!sheetName) throw new Error('sheetName required');
-  if (!where || typeof where !== 'object') throw new Error('where object required');
-  return writeSheet(sheetName, 'delete', { where });
-}
-
-/* ============================================================
- *  Utilidades de formato y parsing
- * ============================================================ */
-
-/** Convierte strings/valores con símbolos a Number seguro */
-export function toNumber(x) {
-  const n = typeof x === 'string' ? Number(String(x).replace(/[^\d.-]/g, '')) : Number(x);
-  return Number.isFinite(n) ? n : 0;
-}
-
-/** Convierte fechas tipo Excel serial a Date (Google Sheets suele usar serial) */
-function excelSerialDateToJSDate(serial) {
-  // Base: 1899-12-30 (Google/Excel)
-  const ms = (serial - 25569) * 86400 * 1000;
-  const d = new Date(ms);
-  return isNaN(d.getTime()) ? null : d;
-}
-
-/** Intenta parsear fecha desde string/number */
-export function parseMaybeDate(v) {
-  if (v == null || v === '') return null;
-  if (typeof v === 'number' && isFinite(v)) {
-    return excelSerialDateToJSDate(v);
-  }
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? null : d;
-}
-
-/** Formato fecha “Mar 14, 2025” */
 export function formatDateMDY(d) {
   if (!d) return '—';
-  try {
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  } catch {
-    return '—';
-  }
+  const dt = d instanceof Date ? d : new Date(d);
+  if (isNaN(+dt)) return '—';
+  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-/** Formato CLP (sin decimales) */
-export function formatCLP(n) {
-  try {
-    return new Intl.NumberFormat('es-CL', {
-      style: 'currency',
-      currency: 'CLP',
-      maximumFractionDigits: 0,
-    }).format(n || 0);
-  } catch {
-    return `CLP ${Math.round(n || 0).toLocaleString('es-CL')}`;
-  }
-}
-
-/* ============================================================
- *  DEMAND: construir mapa y cobertura
- * ============================================================ */
-
-/**
- * Construye un Map por presentation_code con:
- * { presentationCode, monthlyDemand, stockUnits, daysSupply }
- *
- * Espera columnas en demand:
- * - presentation_code
- * - monthly_demand_units
- * - current_stock_units
- * - days_supply  (opcional; si no, lo calculamos)
- */
-export function buildDemandMap(rows) {
+/* ---------------- Demanda: construir mapa por presentation_code ---------------- */
+export function buildDemandMap(demandRows) {
   const map = new Map();
-  for (const r of rows || []) {
-    const code = String(r.presentation_code || '').trim();
+  for (const r of demandRows || []) {
+    const code = String(pick(r, ['presentation_code','presentation','code']) || '').trim();
     if (!code) continue;
-
-    const monthly = toNumber(r.monthly_demand_units);
-    const stock = toNumber(r.current_stock_units);
-    let days = toNumber(r.days_supply);
-
-    if (!days && monthly > 0) {
-      // días = stock / (demanda diaria)
-      days = stock / (monthly / 30);
-    }
-
-    map.set(code, {
-      presentationCode: code,
-      monthlyDemand: monthly,
-      stockUnits: stock,
-      daysSupply: Number.isFinite(days) ? days : null,
-    });
+    const monthly = toNumber(pick(r, ['monthly_demand_units','monthly_demand','demand_units']));
+    const stockUnits = toNumber(pick(r, ['current_stock_units','stock_units']));
+    const packSize = toNumber(pick(r, ['package_size','pack_size']));
+    map.set(code, { monthly, stockUnits, packSize });
   }
   return map;
 }
 
-/**
- * Agrega datos a nivel tender (varios presentation_code por tender).
- * - tenderItems: filas del sheet tender_items (agrupadas por tender)
- * - demandMap: Map de buildDemandMap
- * - strategy: 'min' (bottleneck, por defecto) o 'weighted' (promedio ponderado por demanda)
- *
- * Devuelve:
- * {
- *   tenderId, title, productsCount, deliveryDate(Date),
- *   totalValue(Number), daysSupply(Number|null)
- * }
- */
-export function aggregateTenderRow(tenderItems, demandMap, strategy = 'min') {
-  const row = {};
-  if (!tenderItems?.length) return row;
-
-  // Campos básicos
-  const t0 = tenderItems[0];
-  const tenderId = t0.tender_id || t0.tender_number || t0.tender || '';
-  row.tenderId = String(tenderId || '').trim();
-  row.title = t0.title || t0.product_name || '—';
-
-  // Distintos presentation codes
-  const codes = [...new Set(tenderItems.map(i => String(i.presentation_code || '').trim()).filter(Boolean))];
-  row.productsCount = codes.length;
-
-  // Delivery date: elegir la más temprana disponible entre first_delivery/delivery_date/first_delivery_date
-  let minDate = null;
-  for (const it of tenderItems) {
-    const d =
-      parseMaybeDate(it.first_delivery) ||
-      parseMaybeDate(it.delivery_date) ||
-      parseMaybeDate(it.first_delivery_date);
-    if (!d) continue;
-    if (!minDate || d < minDate) minDate = d;
-  }
-  row.deliveryDate = minDate;
-
-  // Total value: suma item_total_value; si no, unit_price * (awarded_qty/quantity)
-  let total = 0;
-  for (const it of tenderItems) {
-    const lineTotal =
-      toNumber(it.item_total_value) ||
-      (toNumber(it.unit_price) *
-        (toNumber(it.awarded_qty) || toNumber(it.quantity) || toNumber(it.qty) || 0));
-    total += lineTotal;
-  }
-  row.totalValue = total;
-
-  // Cobertura desde DEMAND
-  const entries = [];
-  for (const c of codes) {
-    const d = demandMap.get(c);
-    if (d && Number.isFinite(d.daysSupply)) entries.push(d);
-  }
-
-  if (!entries.length) {
-    row.daysSupply = null;
-  } else if (strategy === 'weighted') {
-    // promedio ponderado por demanda mensual
-    let sumW = 0,
-      sumWD = 0;
-    for (const e of entries) {
-      const w = Math.max(1, e.monthlyDemand || 0); // si demanda=0, evita peso 0
-      sumW += w;
-      sumWD += e.daysSupply * w;
-    }
-    row.daysSupply = sumW > 0 ? sumWD / sumW : null;
-  } else {
-    // bottleneck = mínimo de días
-    row.daysSupply = Math.min(...entries.map(e => e.daysSupply));
-  }
-
-  return row;
-}
-
-/**
- * Badge estilo Rocket según días de cobertura.
- * Devuelve { label, tone } donde tone ∈ { 'danger','warning','success','muted' }
- */
+/* ---------------- Badge de cobertura ---------------- */
 export function badgeForDays(days) {
-  if (days == null || !Number.isFinite(days)) return { label: '—', tone: 'muted' };
-  const d = Math.round(days);
-  if (d < 10) return { label: `${d} days`, tone: 'danger' };   // rojo
-  if (d < 30) return { label: `${d} days`, tone: 'warning' };  // amarillo
-  return { label: `${d} days`, tone: 'success' };              // verde
+  const n = Number(days);
+  if (!Number.isFinite(n) || n < 0) return { label: '—', tone: 'muted' };
+  if (n <= 10) return { label: `${n} days`, tone: 'danger' };
+  if (n <= 30) return { label: `${n} days`, tone: 'warning' };
+  return { label: `${n} days`, tone: 'success' };
 }
+
+/* ---------------- Agregación por Tender ----------------
+   items: filas de tender_items de un mismo tender
+   demandMap: mapa por presentation_code
+   coverageMode: 'min' → bottleneck (recomendado)
+*/
+export function aggregateTenderRow(items, demandMap, coverageMode = 'min') {
+  const first = items[0] || {};
+  const tenderId = String(pick(first, ['tender_number','tender_id','tender']) || '').trim();
+
+  let productsCount = 0;
+  let totalValue = 0;
+  let deliveryDate = null;
+
+  // cobertura por item → luego agregamos
+  const itemCoverages = [];
+
+  for (const it of items) {
+    productsCount += 1;
+
+    const qty = toNumber(pick(it, ['qty','quantity','total_qty']));
+    const unit = toNumber(pick(it, ['unit_price_clp','unit_price','price_clp','price','cost_clp']));
+    totalValue += qty * unit;
+
+    const d = pick(it, ['first_delivery','first_delivery_date','delivery_date']);
+    if (d && !deliveryDate) deliveryDate = new Date(d);
+
+    const code = String(pick(it, ['presentation_code','presentation','code']) || '').trim();
+    if (code && demandMap.has(code)) {
+      const { monthly, stockUnits } = demandMap.get(code);
+      const daily = monthly > 0 ? (monthly / 30) : 0;
+      const days = daily > 0 ? Math.floor(stockUnits / daily) : null;
+      if (Number.isFinite(days)) itemCoverages.push(days);
+    }
+  }
+
+  let daysSupply = null;
+  if (itemCoverages.length) {
+    daysSupply = coverageMode === 'min'
+      ? Math.min(...itemCoverages)
+      : Math.round(itemCoverages.reduce((a,b) => a+b, 0) / itemCoverages.length);
+  }
+
+  return { tenderId, productsCount, totalValue, deliveryDate, daysSupply };
+}
+

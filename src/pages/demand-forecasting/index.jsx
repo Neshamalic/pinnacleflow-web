@@ -176,3 +176,11 @@ const DemandForecasting = () => {
 };
 
 export default DemandForecasting;
+
+export default function Forecasting() {
+  return (
+    <div className="pf-card" style={{ padding:16 }}>
+      (Vista placeholder; solo para que la navegación funcione)
+    </div>
+  );
+}

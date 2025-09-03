@@ -222,3 +222,13 @@ const ImportManagement = () => {
 };
 
 export default ImportManagement;
+
+export default function Imports() {
+  return (
+    <div className="pf-card" style={{ padding:16 }}>
+      (Vista placeholder; solo para que la navegación funcione)
+    </div>
+  );
+}
+
+

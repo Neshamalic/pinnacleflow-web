@@ -1,10 +1,10 @@
+// src/pages/communications-log/index.jsx
 import React, { useEffect, useState } from "react";
 import Header from "../../components/ui/Header";
 import Breadcrumb from "../../components/ui/Breadcrumb";
 import Icon from "../../components/AppIcon";
 import { fetchGoogleSheet } from "../../lib/googleSheet";
 import { SHEET_ID } from "../../lib/sheetsConfig";
-// 👇 Importa helpers de formato (ruta relativa + .js)
 import { fmtDate, toDate } from "../../utils/format.js";
 
 const CommunicationsLog = () => {
@@ -15,8 +15,7 @@ const CommunicationsLog = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem("language") || "en";
-    setLang(saved);
+    setLang(localStorage.getItem("language") || "en");
   }, []);
 
   useEffect(() => {
@@ -24,10 +23,7 @@ const CommunicationsLog = () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await fetchGoogleSheet({
-          sheetId: SHEET_ID,
-          sheetName: "communications",
-        });
+        const data = await fetchGoogleSheet({ sheetId: SHEET_ID, sheetName: "communications" });
         setRows(Array.isArray(data) ? data : []);
         setLastUpdated(new Date());
       } catch (e) {
@@ -94,7 +90,6 @@ const CommunicationsLog = () => {
                   <tbody className="divide-y divide-border">
                     {rows
                       .slice()
-                      // ordena con parser robusto
                       .sort((a, b) => {
                         const da = toDate(a?.date);
                         const db = toDate(b?.date);
@@ -124,15 +119,7 @@ const CommunicationsLog = () => {
       </main>
     </div>
   );
-
-  export default function Communications() {
-  return (
-    <div className="pf-card" style={{ padding:16 }}>
-      (Vista placeholder; solo para que la navegación funcione)
-    </div>
-  );
-}
-
 };
 
 export default CommunicationsLog;
+

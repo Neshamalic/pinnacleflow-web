@@ -1,62 +1,56 @@
-import React, { useEffect, useState } from 'react';
-import Header from '../../components/ui/Header';
-import Breadcrumb from '../../components/ui/Breadcrumb';
-import Button from '../../components/ui/Button';
-import Icon from '../../components/AppIcon';
+// src/pages/import-management/index.jsx
+import React, { useEffect, useState } from "react";
+import Header from "../../components/ui/Header";
+import Breadcrumb from "../../components/ui/Breadcrumb";
+import Button from "../../components/ui/Button";
+import Icon from "../../components/AppIcon";
 
-// Google Sheets
-import { fetchGoogleSheet } from '../../lib/googleSheet';
-import { SHEET_ID } from '../../lib/sheetsConfig';
+import { fetchGoogleSheet } from "../../lib/googleSheet";
+import { SHEET_ID } from "../../lib/sheetsConfig";
 
-// Componentes propios de Import Management
-import ImportTable from './components/ImportTable';
-import ImportDetails from './components/ImportDetails';
+import ImportTable from "./components/ImportTable";
+import ImportDetails from "./components/ImportDetails";
 
 const ImportManagement = () => {
-  const [currentLanguage, setCurrentLanguage] = useState('en');
+  const [currentLanguage, setCurrentLanguage] = useState("en");
 
-  // Filtros (ajústalos si usas un componente de filtros)
   const [filters, setFilters] = useState({
-    search: '',
-    status: '',
-    broker: '',
-    warehouse: '',
-    dateRange: ''
+    search: "",
+    status: "",
+    broker: "",
+    warehouse: "",
+    dateRange: "",
   });
 
-  // Datos reales
-  const [importsData, setImportsData] = useState([]); // agrupados por oci_number
+  const [importsData, setImportsData] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Modal de detalle
   const [openItems, setOpenItems] = useState(false);
   const [selectedImport, setSelectedImport] = useState(null);
 
   useEffect(() => {
-    const savedLanguage = localStorage.getItem('language') || 'en';
+    const savedLanguage = localStorage.getItem("language") || "en";
     setCurrentLanguage(savedLanguage);
 
     const handleStorageChange = () => {
-      const newLanguage = localStorage.getItem('language') || 'en';
+      const newLanguage = localStorage.getItem("language") || "en";
       setCurrentLanguage(newLanguage);
     };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  // Carga imports + import_items
   useEffect(() => {
     async function load() {
       try {
         setLoading(true);
 
         const [imports, importItems] = await Promise.all([
-          fetchGoogleSheet({ sheetId: SHEET_ID, sheetName: 'imports' }),
-          fetchGoogleSheet({ sheetId: SHEET_ID, sheetName: 'import_items' })
+          fetchGoogleSheet({ sheetId: SHEET_ID, sheetName: "imports" }),
+          fetchGoogleSheet({ sheetId: SHEET_ID, sheetName: "import_items" }),
         ]);
 
-        // Indexar ítems por oci_number
         const itemsByOCI = (importItems || []).reduce((acc, it) => {
           const key = it?.oci_number;
           if (!key) return acc;
@@ -64,39 +58,36 @@ const ImportManagement = () => {
           return acc;
         }, {});
 
-        // Construir filas para la UI
         const list = (imports || []).map((imp, idx) => {
           const items = itemsByOCI[imp?.oci_number] || [];
           const totalReceived = items.reduce((s, it) => s + (Number(it?.qty_received) || 0), 0);
           const qaRequired =
             items.some(
-              (it) =>
-                String(it?.qa_required).toLowerCase() === 'true' ||
-                it?.qa_required === 1
+              (it) => String(it?.qa_required).toLowerCase() === "true" || it?.qa_required === 1
             ) || false;
 
           return {
             id: idx + 1,
-            ociNumber: imp?.oci_number || '',
-            poNumber: imp?.po_number || '',
-            blAwb: imp?.bl_awb || '',
-            vessel: imp?.vessel || '',
-            eta: imp?.eta || '',
-            atd: imp?.atd || '',
-            ata: imp?.ata || '',
-            customsBroker: imp?.customs_broker || '',
-            warehouse: imp?.warehouse || '',
-            status: imp?.status || 'open',
+            ociNumber: imp?.oci_number || "",
+            poNumber: imp?.po_number || "",
+            blAwb: imp?.bl_awb || "",
+            vessel: imp?.vessel || "",
+            eta: imp?.eta || "",
+            atd: imp?.atd || "",
+            ata: imp?.ata || "",
+            customsBroker: imp?.customs_broker || "",
+            warehouse: imp?.warehouse || "",
+            status: imp?.status || "open",
             items,
             totalReceived,
-            qaRequired
+            qaRequired,
           };
         });
 
         setImportsData(list);
         setLastUpdated(new Date());
       } catch (e) {
-        console.error('Error loading imports:', e);
+        console.error("Error loading imports:", e);
         setImportsData([]);
       } finally {
         setLoading(false);
@@ -106,17 +97,16 @@ const ImportManagement = () => {
   }, []);
 
   const handleExport = () => {
-    console.log('Export imports…', importsData.length);
+    console.log("Export imports…", importsData.length);
   };
 
   const handleNewImport = () => {
-    console.log('Create new import…');
+    console.log("Create new import…");
   };
 
   const handleFiltersChange = (newFilters) => setFilters(newFilters);
 
-  // Filtrado básico
-  const norm = (s) => (s ? String(s).toLowerCase() : '');
+  const norm = (s) => (s ? String(s).toLowerCase() : "");
   const filteredImports = importsData.filter((imp) => {
     if (filters?.search) {
       const q = norm(filters.search);
@@ -134,16 +124,15 @@ const ImportManagement = () => {
   });
 
   const lastUpdatedLabel = lastUpdated
-    ? new Intl.DateTimeFormat(currentLanguage === 'es' ? 'es-CL' : 'en-US', {
-        hour: '2-digit',
-        minute: '2-digit'
+    ? new Intl.DateTimeFormat(currentLanguage === "es" ? "es-CL" : "en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
       }).format(lastUpdated)
     : null;
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
-
       <main className="pt-16">
         <div className="max-w-7xl mx-auto px-6 py-8">
           {/* Encabezado */}
@@ -152,30 +141,20 @@ const ImportManagement = () => {
             <div className="flex items-center justify-between mt-4">
               <div>
                 <h1 className="text-3xl font-bold text-foreground">
-                  {currentLanguage === 'es' ? 'Gestión de Importaciones' : 'Import Management'}
+                  {currentLanguage === "es" ? "Gestión de Importaciones" : "Import Management"}
                 </h1>
                 <p className="text-muted-foreground mt-2">
-                  {currentLanguage === 'es'
-                    ? 'Coordina BL/AWB, ETA/ATD/ATA y QA con tu agente y bodega.'
-                    : 'Coordinate BL/AWB, ETA/ATD/ATA and QA with broker and warehouse.'}
+                  {currentLanguage === "es"
+                    ? "Coordina BL/AWB, ETA/ATD/ATA y QA con tu agente y bodega."
+                    : "Coordinate BL/AWB, ETA/ATD/ATA and QA with broker and warehouse."}
                 </p>
               </div>
               <div className="flex items-center space-x-3">
-                <Button
-                  variant="outline"
-                  onClick={handleExport}
-                  iconName="Download"
-                  iconPosition="left"
-                >
-                  {currentLanguage === 'es' ? 'Exportar' : 'Export'}
+                <Button variant="outline" onClick={handleExport} iconName="Download" iconPosition="left">
+                  {currentLanguage === "es" ? "Exportar" : "Export"}
                 </Button>
-                <Button
-                  variant="default"
-                  onClick={handleNewImport}
-                  iconName="Plus"
-                  iconPosition="left"
-                >
-                  {currentLanguage === 'es' ? 'Nueva Importación' : 'New Import'}
+                <Button variant="default" onClick={handleNewImport} iconName="Plus" iconPosition="left">
+                  {currentLanguage === "es" ? "Nueva Importación" : "New Import"}
                 </Button>
               </div>
             </div>
@@ -185,14 +164,14 @@ const ImportManagement = () => {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-foreground">
-                {currentLanguage === 'es' ? 'Importaciones' : 'Imports'}
+                {currentLanguage === "es" ? "Importaciones" : "Imports"}
               </h2>
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                 <Icon name="Clock" size={16} />
                 <span>
-                  {currentLanguage === 'es'
-                    ? `Última actualización: ${lastUpdatedLabel || 'cargando…'}`
-                    : `Last updated: ${lastUpdatedLabel || 'loading…'}`}
+                  {currentLanguage === "es"
+                    ? `Última actualización: ${lastUpdatedLabel || "cargando…"}`
+                    : `Last updated: ${lastUpdatedLabel || "loading…"}`}
                 </span>
               </div>
             </div>
@@ -205,6 +184,7 @@ const ImportManagement = () => {
                 setSelectedImport(imp);
                 setOpenItems(true);
               }}
+              onFiltersChange={handleFiltersChange}
             />
           </div>
         </div>
@@ -222,13 +202,5 @@ const ImportManagement = () => {
 };
 
 export default ImportManagement;
-
-export default function Imports() {
-  return (
-    <div className="pf-card" style={{ padding:16 }}>
-      (Vista placeholder; solo para que la navegación funcione)
-    </div>
-  );
-}
 
 

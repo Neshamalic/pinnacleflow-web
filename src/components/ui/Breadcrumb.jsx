@@ -1,86 +1,62 @@
 import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import Icon from '../AppIcon';
 
 const Breadcrumb = () => {
   const location = useLocation();
-  const navigate = useNavigate();
-
-  const routeLabels = {
-    '/dashboard': { en: 'Dashboard', es: 'Panel de Control' },
-    '/tender-management': { en: 'Tender Management', es: 'Gestión de Licitaciones' },
-    '/purchase-order-tracking': { en: 'Purchase Order Tracking', es: 'Seguimiento de Órdenes' },
-    '/import-management': { en: 'Import Management', es: 'Gestión de Importaciones' },
-    '/demand-forecasting': { en: 'Demand Forecasting', es: 'Pronóstico de Demanda' },
-    '/communications-log': { en: 'Communications Log', es: 'Registro de Comunicaciones' }
-  };
-
-  const getCurrentLanguage = () => {
-    return localStorage.getItem('language') || 'en';
-  };
-
-  const getLabel = (path) => {
-    const language = getCurrentLanguage();
-    return routeLabels?.[path]?.[language] || path?.replace('/', '')?.replace('-', ' ');
+  
+  const pathMap = {
+    '/global-search': 'Global Search',
+    '/suppliers-management': 'Suppliers Management',
+    '/clients-management': 'Clients Management',
+    '/intelligent-matching': 'Intelligent Matching',
+    '/deals-management': 'Deals Management',
+    '/purchase-orders': 'Purchase Orders'
   };
 
   const generateBreadcrumbs = () => {
     const pathSegments = location?.pathname?.split('/')?.filter(segment => segment);
-    const breadcrumbs = [
-      { path: '/dashboard', label: getLabel('/dashboard'), isHome: true }
-    ];
-
-    if (location?.pathname !== '/dashboard') {
-      breadcrumbs?.push({
-        path: location?.pathname,
-        label: getLabel(location?.pathname),
-        isHome: false
-      });
-    }
+    const breadcrumbs = [{ label: 'Dashboard', path: '/' }];
+    
+    let currentPath = '';
+    pathSegments?.forEach(segment => {
+      currentPath += `/${segment}`;
+      const label = pathMap?.[currentPath] || segment?.replace(/-/g, ' ')?.replace(/\b\w/g, l => l?.toUpperCase());
+      breadcrumbs?.push({ label, path: currentPath });
+    });
 
     return breadcrumbs;
   };
 
   const breadcrumbs = generateBreadcrumbs();
 
-  const handleBreadcrumbClick = (path) => {
-    navigate(path);
+  const handleNavigation = (path) => {
+    if (path !== location?.pathname) {
+      window.location.href = path;
+    }
   };
 
+  if (breadcrumbs?.length <= 1) return null;
+
   return (
-    <nav className="flex items-center space-x-1 text-sm" aria-label="Breadcrumb">
-      {breadcrumbs?.map((breadcrumb, index) => (
-        <div key={breadcrumb?.path} className="flex items-center">
+    <nav className="flex items-center space-x-2 text-sm text-text-secondary mb-6">
+      {breadcrumbs?.map((crumb, index) => (
+        <React.Fragment key={crumb?.path}>
           {index > 0 && (
-            <Icon 
-              name="ChevronRight" 
-              size={16} 
-              className="breadcrumb-separator" 
-            />
+            <Icon name="ChevronRight" size={14} className="text-border" />
           )}
-          
-          {breadcrumb?.isHome ? (
-            <button
-              onClick={() => handleBreadcrumbClick(breadcrumb?.path)}
-              className="breadcrumb-item flex items-center space-x-1"
-              aria-label="Go to dashboard"
-            >
-              <Icon name="Home" size={16} />
-              <span>{breadcrumb?.label}</span>
-            </button>
-          ) : index === breadcrumbs?.length - 1 ? (
-            <span className="text-foreground font-medium">
-              {breadcrumb?.label}
-            </span>
-          ) : (
-            <button
-              onClick={() => handleBreadcrumbClick(breadcrumb?.path)}
-              className="breadcrumb-item"
-            >
-              {breadcrumb?.label}
-            </button>
-          )}
-        </div>
+          <button
+            onClick={() => handleNavigation(crumb?.path)}
+            className={`transition-clinical ${
+              index === breadcrumbs?.length - 1
+                ? 'text-foreground font-medium cursor-default'
+                : 'hover:text-foreground cursor-pointer'
+            }`}
+            disabled={index === breadcrumbs?.length - 1}
+          >
+            {crumb?.label}
+          </button>
+        </React.Fragment>
       ))}
     </nav>
   );

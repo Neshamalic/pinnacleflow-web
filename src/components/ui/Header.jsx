@@ -1,216 +1,177 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import Icon from '../AppIcon';
 import Button from './Button';
 
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [currentLanguage, setCurrentLanguage] = useState('en');
-  const [notifications, setNotifications] = useState({
-    dashboard: 3,
-    'tender-management': 0,
-    'purchase-order-tracking': 2,
-    'import-management': 1,
-    'demand-forecasting': 0,
-    'communications-log': 5
-  });
-
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
 
   const navigationItems = [
-    {
-      id: 'dashboard',
-      labelEn: 'Dashboard',
-      labelEs: 'Panel de Control',
-      path: '/dashboard',
-      icon: 'LayoutDashboard'
-    },
-    {
-      id: 'tender-management',
-      labelEn: 'Tenders',
-      labelEs: 'Licitaciones',
-      path: '/tender-management',
-      icon: 'FileText'
-    },
-    {
-      id: 'purchase-order-tracking',
-      labelEn: 'Orders',
-      labelEs: 'Órdenes',
-      path: '/purchase-order-tracking',
-      icon: 'ShoppingCart'
-    },
-    {
-      id: 'import-management',
-      labelEn: 'Imports',
-      labelEs: 'Importaciones',
-      path: '/import-management',
-      icon: 'Truck'
-    },
-    {
-      id: 'demand-forecasting',
-      labelEn: 'Forecasting',
-      labelEs: 'Pronósticos',
-      path: '/demand-forecasting',
-      icon: 'TrendingUp'
-    },
-    {
-      id: 'communications-log',
-      labelEn: 'Communications',
-      labelEs: 'Comunicaciones',
-      path: '/communications-log',
-      icon: 'MessageSquare'
-    }
+    { label: 'Search', path: '/global-search', icon: 'Search' },
+    { label: 'Suppliers', path: '/suppliers-management', icon: 'Building2' },
+    { label: 'Clients', path: '/clients-management', icon: 'Users' },
+    { label: 'Matching', path: '/intelligent-matching', icon: 'Zap' },
+    { label: 'Deals', path: '/deals-management', icon: 'TrendingUp' },
+    { label: 'Orders', path: '/purchase-orders', icon: 'ShoppingCart' }
   ];
 
-  useEffect(() => {
-    const savedLanguage = localStorage.getItem('language') || 'en';
-    setCurrentLanguage(savedLanguage);
-  }, []);
-
-  const handleLanguageToggle = () => {
-    const newLanguage = currentLanguage === 'en' ? 'es' : 'en';
-    setCurrentLanguage(newLanguage);
-    localStorage.setItem('language', newLanguage);
-  };
+  const isActivePath = (path) => location?.pathname === path;
 
   const handleNavigation = (path) => {
-    navigate(path);
+    window.location.href = path;
     setIsMobileMenuOpen(false);
   };
 
-  const getActiveTab = () => {
-    return navigationItems?.find(item => item?.path === location?.pathname)?.id || 'dashboard';
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  const getLabel = (item) => {
-    return currentLanguage === 'es' ? item?.labelEs : item?.labelEn;
+  const toggleUserMenu = () => {
+    setIsUserMenuOpen(!isUserMenuOpen);
+  };
+
+  const handleLogout = () => {
+    // Logout logic here
+    console.log('Logout clicked');
+    setIsUserMenuOpen(false);
   };
 
   return (
-    <>
-      <header className="fixed top-0 left-0 right-0 z-1000 bg-card border-b border-border shadow-soft">
-        <div className="flex items-center justify-between h-16 px-6">
-          {/* Logo */}
-          <div className="flex items-center">
-            <div 
-              className="flex items-center cursor-pointer"
-              onClick={() => handleNavigation('/dashboard')}
-            >
-              <div className="flex items-center justify-center w-8 h-8 bg-primary rounded-lg mr-3">
-                <Icon name="Zap" size={20} color="white" />
-              </div>
-              <h1 className="text-xl font-semibold text-foreground">PinnacleFlow</h1>
+    <header className="fixed top-0 left-0 right-0 z-40 bg-surface border-b border-border clinical-shadow">
+      <div className="flex items-center justify-between h-16 px-6">
+        {/* Logo Section */}
+        <div className="flex items-center">
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center justify-center w-8 h-8 bg-primary rounded-lg">
+              <Icon name="Pill" size={20} color="white" />
             </div>
-          </div>
-
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-1">
-            {navigationItems?.map((item) => (
-              <button
-                key={item?.id}
-                onClick={() => handleNavigation(item?.path)}
-                className={`nav-tab ${getActiveTab() === item?.id ? 'active' : ''}`}
-              >
-                <div className="flex items-center space-x-2 relative">
-                  <Icon name={item?.icon} size={16} />
-                  <span>{getLabel(item)}</span>
-                  {notifications?.[item?.id] > 0 && (
-                    <span className="notification-badge">
-                      {notifications?.[item?.id]}
-                    </span>
-                  )}
-                </div>
-              </button>
-            ))}
-          </nav>
-
-          {/* Right Section */}
-          <div className="flex items-center space-x-4">
-            {/* Language Toggle */}
-            <button
-              onClick={handleLanguageToggle}
-              className="language-toggle"
-              title={currentLanguage === 'en' ? 'Switch to Spanish' : 'Cambiar a Inglés'}
-            >
-              <Icon name="Globe" size={16} />
-              <span className="hidden sm:inline">
-                {currentLanguage === 'en' ? 'EN' : 'ES'}
-              </span>
-            </button>
-
-            {/* Mobile Menu Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              onClick={() => setIsMobileMenuOpen(true)}
-            >
-              <Icon name="Menu" size={20} />
-            </Button>
+            <div className="hidden sm:block">
+              <h1 className="text-lg font-semibold text-foreground">
+                Supplier-Client Match CRM
+              </h1>
+            </div>
+            <div className="block sm:hidden">
+              <h1 className="text-lg font-semibold text-foreground">
+                SCM CRM
+              </h1>
+            </div>
           </div>
         </div>
-      </header>
+
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex items-center space-x-1">
+          {navigationItems?.map((item) => (
+            <button
+              key={item?.path}
+              onClick={() => handleNavigation(item?.path)}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-clinical ${
+                isActivePath(item?.path)
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-text-secondary hover:text-foreground hover:bg-muted'
+              }`}
+            >
+              <Icon name={item?.icon} size={16} />
+              <span>{item?.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        {/* Right Section */}
+        <div className="flex items-center space-x-4">
+          {/* User Menu */}
+          <div className="relative">
+            <button
+              onClick={toggleUserMenu}
+              className="flex items-center space-x-2 p-2 rounded-lg hover:bg-muted transition-clinical"
+            >
+              <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
+                <Icon name="User" size={16} color="white" />
+              </div>
+              <div className="hidden sm:block text-left">
+                <div className="text-sm font-medium text-foreground">John Doe</div>
+                <div className="text-xs text-text-secondary">Procurement Manager</div>
+              </div>
+              <Icon name="ChevronDown" size={16} className="text-text-secondary" />
+            </button>
+
+            {/* User Dropdown */}
+            {isUserMenuOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-popover border border-border rounded-lg clinical-shadow-lg z-50">
+                <div className="py-1">
+                  <button
+                    onClick={() => setIsUserMenuOpen(false)}
+                    className="flex items-center w-full px-4 py-2 text-sm text-popover-foreground hover:bg-muted transition-clinical"
+                  >
+                    <Icon name="User" size={16} className="mr-3" />
+                    Profile
+                  </button>
+                  <button
+                    onClick={() => setIsUserMenuOpen(false)}
+                    className="flex items-center w-full px-4 py-2 text-sm text-popover-foreground hover:bg-muted transition-clinical"
+                  >
+                    <Icon name="Settings" size={16} className="mr-3" />
+                    Settings
+                  </button>
+                  <div className="border-t border-border my-1"></div>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center w-full px-4 py-2 text-sm text-destructive hover:bg-muted transition-clinical"
+                  >
+                    <Icon name="LogOut" size={16} className="mr-3" />
+                    Logout
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            onClick={toggleMobileMenu}
+            className="md:hidden p-2 rounded-lg hover:bg-muted transition-clinical"
+          >
+            <Icon name={isMobileMenuOpen ? "X" : "Menu"} size={20} />
+          </button>
+        </div>
+      </div>
       {/* Mobile Navigation Overlay */}
       {isMobileMenuOpen && (
-        <div className="mobile-nav-overlay md:hidden">
-          <div className="mobile-nav-content">
+        <div className="fixed inset-0 z-60 md:hidden">
+          <div className="fixed inset-0 bg-black bg-opacity-50" onClick={toggleMobileMenu}></div>
+          <div className="fixed top-0 right-0 h-full w-80 bg-surface clinical-shadow-lg">
             <div className="flex items-center justify-between p-6 border-b border-border">
-              <div className="flex items-center">
-                <div className="flex items-center justify-center w-8 h-8 bg-primary rounded-lg mr-3">
-                  <Icon name="Zap" size={20} color="white" />
-                </div>
-                <h1 className="text-xl font-semibold text-foreground">PinnacleFlow</h1>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsMobileMenuOpen(false)}
+              <h2 className="text-lg font-semibold text-foreground">Navigation</h2>
+              <button
+                onClick={toggleMobileMenu}
+                className="p-2 rounded-lg hover:bg-muted transition-clinical"
               >
                 <Icon name="X" size={20} />
-              </Button>
+              </button>
             </div>
-
             <nav className="p-6">
               <div className="space-y-2">
                 {navigationItems?.map((item) => (
                   <button
-                    key={item?.id}
+                    key={item?.path}
                     onClick={() => handleNavigation(item?.path)}
-                    className={`w-full flex items-center justify-between p-3 rounded-md text-left transition-colors duration-200 ${
-                      getActiveTab() === item?.id
-                        ? 'bg-primary/10 text-primary' :'text-secondary hover:text-primary hover:bg-muted'
+                    className={`flex items-center space-x-3 w-full p-3 rounded-lg text-left transition-clinical ${
+                      isActivePath(item?.path)
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-text-secondary hover:text-foreground hover:bg-muted'
                     }`}
                   >
-                    <div className="flex items-center space-x-3">
-                      <Icon name={item?.icon} size={20} />
-                      <span className="font-medium">{getLabel(item)}</span>
-                    </div>
-                    {notifications?.[item?.id] > 0 && (
-                      <span className="flex items-center justify-center w-6 h-6 bg-error text-error-foreground text-xs font-medium rounded-full">
-                        {notifications?.[item?.id]}
-                      </span>
-                    )}
+                    <Icon name={item?.icon} size={20} />
+                    <span className="font-medium">{item?.label}</span>
                   </button>
                 ))}
-              </div>
-
-              <div className="mt-8 pt-6 border-t border-border">
-                <button
-                  onClick={handleLanguageToggle}
-                  className="w-full flex items-center space-x-3 p-3 text-secondary hover:text-primary transition-colors duration-200"
-                >
-                  <Icon name="Globe" size={20} />
-                  <span className="font-medium">
-                    {currentLanguage === 'en' ? 'Switch to Spanish' : 'Cambiar a Inglés'}
-                  </span>
-                </button>
               </div>
             </nav>
           </div>
         </div>
       )}
-    </>
+    </header>
   );
 };
 

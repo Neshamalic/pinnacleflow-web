@@ -1,45 +1,34 @@
-// src/Routes.jsx
-import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React from "react";
+import { BrowserRouter, Routes as RouterRoutes, Route } from "react-router-dom";
+import ScrollToTop from "components/ScrollToTop";
+import ErrorBoundary from "components/ErrorBoundary";
+import NotFound from "pages/NotFound";
+import PurchaseOrdersPage from './pages/purchase-orders';
+import DealsManagement from './pages/deals-management';
+import IntelligentMatching from './pages/intelligent-matching';
+import SuppliersManagement from './pages/suppliers-management';
+import GlobalSearch from './pages/global-search';
+import ClientsManagement from './pages/clients-management';
 
-import Dashboard from './pages/dashboard';
-import TenderManagement from './pages/tender-management';
-import TenderDetail from './pages/tender-management/TenderDetail';
-import TenderForm from './pages/tender-management/TenderForm';
-import PurchaseOrderTracking from './pages/purchase-order-tracking';
-import ImportManagement from './pages/import-management';
-import Forecasting from './pages/demand-forecasting';
-import CommunicationsLog from './pages/communications-log';
-
-export default function AppRoutes() {
+const Routes = () => {
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-      <Route path="/dashboard" element={<Dashboard />} />
-
-      {/* Licitaciones */}
-      <Route path="/tender-management" element={<TenderManagement />} />
-      <Route path="/tender-management/new" element={<TenderForm />} />
-      <Route path="/tender-management/:tenderId" element={<TenderDetail />} />
-      <Route path="/tender-management/:tenderId/edit" element={<TenderForm />} />
-
-      {/* Órdenes de compra (dos alias válidos) */}
-      <Route path="/orders" element={<PurchaseOrderTracking />} />
-      <Route path="/purchase-order-tracking" element={<PurchaseOrderTracking />} />
-
-      {/* Importaciones */}
-      <Route path="/import-management" element={<ImportManagement />} />
-
-      {/* Pronósticos */}
-      <Route path="/forecasting" element={<Forecasting />} />
-      <Route path="/demand-forecasting" element={<Forecasting />} />
-
-      {/* Comunicaciones */}
-      <Route path="/communications-log" element={<CommunicationsLog />} />
-
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
+    <BrowserRouter>
+      <ErrorBoundary>
+      <ScrollToTop />
+      <RouterRoutes>
+        {/* Define your route here */}
+        <Route path="/" element={<ClientsManagement />} />
+        <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
+        <Route path="/deals-management" element={<DealsManagement />} />
+        <Route path="/intelligent-matching" element={<IntelligentMatching />} />
+        <Route path="/suppliers-management" element={<SuppliersManagement />} />
+        <Route path="/global-search" element={<GlobalSearch />} />
+        <Route path="/clients-management" element={<ClientsManagement />} />
+        <Route path="*" element={<NotFound />} />
+      </RouterRoutes>
+      </ErrorBoundary>
+    </BrowserRouter>
   );
-}
+};
 
+export default Routes;
